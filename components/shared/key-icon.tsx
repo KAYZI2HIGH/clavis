@@ -1,9 +1,11 @@
 export function KeyIcon({
   filled,
   outlined,
+  size = 14,
 }: {
   filled?: boolean;
   outlined?: boolean;
+  size?: number;
 }) {
   const stroke =
     outlined ? "var(--brass-deep)"
@@ -11,7 +13,7 @@ export function KeyIcon({
     : "var(--ink-faint)";
   const fill = filled && !outlined ? "var(--brass)" : "none";
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <circle
         cx="8"
         cy="12"

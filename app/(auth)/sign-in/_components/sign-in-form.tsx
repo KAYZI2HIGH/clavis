@@ -24,7 +24,7 @@ export function SignInForm() {
     if (token) {
       router.push(`/join-vault?token=${token}`);
     } else {
-      router.push("/vault");
+      router.push("/home");
     }
   };
 
@@ -49,7 +49,7 @@ export function SignInForm() {
     <div className="max-w-sm w-full">
       <h1 className="serif text-2xl text-ink">Sign in</h1>
       <p className="text-sm text-ink-muted mt-2">
-        Enter your phone and PIN to return to the vault.
+        Enter your phone and PIN to return.
       </p>
 
       <div className="mt-10 space-y-5">

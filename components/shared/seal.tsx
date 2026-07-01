@@ -1,4 +1,10 @@
-export function Seal() {
+export function Seal({
+  quorum,
+  total,
+}: {
+  quorum: number;
+  total: number;
+}) {
   return (
     <svg width="84" height="84" viewBox="0 0 100 100">
       <circle
@@ -33,7 +39,7 @@ export function Seal() {
         fill="var(--brass-deep)"
         style={{ font: "400 6px Inter", letterSpacing: "0.14em" }}
       >
-        2 OF 3 KEYS
+        {quorum} OF {total} KEYS
       </text>
       <path d="M30 70 L70 70" stroke="var(--brass-deep)" strokeWidth="0.6" />
     </svg>

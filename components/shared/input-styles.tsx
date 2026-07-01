@@ -16,6 +16,7 @@ export function InputStyles() {
       .input-mech:focus { border-color: var(--brass-deep); }
       .input-mech::placeholder { color: var(--ink-faint); }
       .input-mech:disabled { opacity: 0.5; }
+      .key-anim { transition: opacity 220ms var(--ease-mech); }
     `}</style>
   );
 }

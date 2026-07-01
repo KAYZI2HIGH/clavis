@@ -1,15 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { useMembers } from "@/hooks/use-member";
+import type { Vault } from "@/lib/types";
 import { useVault } from "@/hooks/use-vault";
 
-export default function IdentitySwitcher() {
-  const members = useMembers();
+export default function IdentitySwitcher({ vault }: { vault: Vault }) {
   const { state, setActor } = useVault();
   const current = state.currentPartner;
   const [open, setOpen] = useState(false);
-  const me = members.find((m) => m.id === current);
+  const me = vault.stakeholders.find((m) => m.id === current);
 
   return (
     <div className="relative">
@@ -50,7 +49,7 @@ export default function IdentitySwitcher() {
             <div className="px-3 py-2 border-b hairline">
               <p className="engraved">Switch partner</p>
             </div>
-            {members.map((m) => (
+            {vault.stakeholders.map((m) => (
               <button
                 key={m.id}
                 onClick={() => {
@@ -66,8 +65,17 @@ export default function IdentitySwitcher() {
                   {m.initials}
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm text-ink">{m.name}</p>
-                  <p className="engraved text-ink-faint">{m.phone}</p>
+                  <p className="text-sm text-ink">
+                    {m.name}
+                    {m.isFounder && (
+                      <span className="engraved text-ink-faint ml-2">
+                        Founder
+                      </span>
+                    )}
+                  </p>
+                  {m.email && (
+                    <p className="engraved text-ink-faint">{m.email}</p>
+                  )}
                 </div>
                 {m.id === current && (
                   <span className="engraved text-brass-deep">Current</span>

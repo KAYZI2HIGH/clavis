@@ -11,28 +11,27 @@ import { DetailRow } from "@/components/shared/detail-row";
 import { KeyIcon } from "@/components/shared/key-icon";
 import { Seal } from "@/components/shared/seal";
 import { StatusPill } from "@/components/shared/status-pill";
-import { useMembers, usePartnerById } from "@/hooks/use-member";
 import { useVault } from "@/hooks/use-vault";
-import { formatTime, formatUSD } from "@/lib/format";
+import { formatTime, formatNGN } from "@/lib/format";
+import type { Vault } from "@/lib/types";
 
 export function TxDetailSheet({
+  vault,
   txId,
   onClose,
   onApprove,
 }: {
+  vault: Vault;
   txId: string | null;
   onClose: () => void;
   onApprove: () => void;
 }) {
   const { state } = useVault();
-  const tx = state.transactions.find((t) => t.id === txId) ?? null;
+  const tx = vault.transactions.find((t) => t.id === txId) ?? null;
   const current = state.currentPartner;
-  const members = useMembers();
-  const partnerById = usePartnerById();
   const open = !!tx;
   const justSealed = tx?.status === "sealed";
   const settled = tx?.status === "settled";
-
   const canApprove =
     tx && tx.status === "pending" && !tx.approvals.includes(current);
 
@@ -53,8 +52,9 @@ export function TxDetailSheet({
                 <StatusPill status={tx.status} />
               </div>
               <SheetDescription className="mono text-xs text-ink-faint">
-                {tx.id} · Requested by {partnerById(tx.requestedBy)?.name} ·{" "}
-                {formatTime(tx.requestedAt)}
+                {tx.id} · Requested by{" "}
+                {vault.stakeholders.find((s) => s.id === tx.requestedBy)?.name}{" "}
+                · {formatTime(tx.requestedAt)}
               </SheetDescription>
             </SheetHeader>
 
@@ -64,14 +64,17 @@ export function TxDetailSheet({
                   justSealed || settled ? "shown" : ""
                 }`}
               >
-                <Seal />
+                <Seal
+                  quorum={tx.requiredQuorum}
+                  total={vault.stakeholders.length}
+                />
               </div>
 
               <DetailRow
                 label="Amount"
                 value={
                   <span className="mono text-2xl text-ink">
-                    {formatUSD(tx.amount)}
+                    {formatNGN(tx.amountKobo)}
                   </span>
                 }
               />
@@ -95,7 +98,7 @@ export function TxDetailSheet({
               <div>
                 <p className="engraved mb-3">Keys turned</p>
                 <div className="border hairline-strong divide-y hairline">
-                  {members.map((p) => {
+                  {vault.stakeholders.map((p) => {
                     const turned = tx.approvals.includes(p.id);
                     return (
                       <div
@@ -133,8 +136,12 @@ export function TxDetailSheet({
                 <div className="border hairline-strong p-4 bg-card">
                   <p className="engraved text-crimson">Declined</p>
                   <p className="text-sm text-ink mt-1.5">
-                    Declined by {partnerById(tx.declinedBy || "")?.name}. No
-                    funds were moved.
+                    Declined by{" "}
+                    {
+                      vault.stakeholders.find((s) => s.id === tx.declinedBy)
+                        ?.name
+                    }
+                    . No funds were moved.
                   </p>
                   {tx.declineReason && (
                     <p className="text-sm text-ink-muted mt-2 italic">

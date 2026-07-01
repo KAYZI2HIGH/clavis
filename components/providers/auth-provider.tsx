@@ -8,10 +8,12 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useVaultContext } from "./vault-provider";
+import { makeId } from "@/lib/vault-utils";
 
 type AuthContextValue = {
   authedUserId: string | null;
+  authedName: string;
+  authedPhone: string;
   signIn: (input: { phone: string; pin: string }) => boolean;
   signUp: (input: { name: string; phone: string; pin: string }) => void;
   signOut: () => void;
@@ -21,35 +23,42 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [authedUserId, setAuthedUserId] = useState<string | null>(null);
-  const { setActor, updateMemberName } = useVaultContext();
+  const [authedName, setAuthedName] = useState("");
+  const [authedPhone, setAuthedPhone] = useState("");
 
   const signUp = useCallback(
-    ({ name }: { name: string; phone: string; pin: string }) => {
-      const firstId = "mr";
-      updateMemberName(firstId, name);
-      setActor(firstId);
-      setAuthedUserId(firstId);
+    ({ name, phone }: { name: string; phone: string; pin: string }) => {
+      setAuthedUserId(makeId("usr"));
+      setAuthedName(name.trim());
+      setAuthedPhone(phone.trim());
     },
-    [setActor, updateMemberName],
+    [],
   );
 
-  const signIn = useCallback(
-    ({ phone, pin }: { phone: string; pin: string }) => {
-      if (!phone.trim() || pin.length !== 4) return false;
-      setAuthedUserId("mr");
-      setActor("mr");
-      return true;
-    },
-    [setActor],
-  );
+  const signIn = useCallback(({ phone, pin }: { phone: string; pin: string }) => {
+    if (!phone.trim() || pin.length !== 4) return false;
+    setAuthedUserId((prev) => prev ?? makeId("usr"));
+    setAuthedName((prev) => prev || "Founder");
+    setAuthedPhone(phone.trim());
+    return true;
+  }, []);
 
   const signOut = useCallback(() => {
     setAuthedUserId(null);
+    setAuthedName("");
+    setAuthedPhone("");
   }, []);
 
   const value = useMemo(
-    () => ({ authedUserId, signIn, signUp, signOut }),
-    [authedUserId, signIn, signUp, signOut],
+    () => ({
+      authedUserId,
+      authedName,
+      authedPhone,
+      signIn,
+      signUp,
+      signOut,
+    }),
+    [authedUserId, authedName, authedPhone, signIn, signUp, signOut],
   );
 
   return (

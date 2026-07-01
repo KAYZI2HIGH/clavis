@@ -1,21 +1,21 @@
 "use client";
 
-import { useMembers, usePartnerById } from "@/hooks/use-member";
+import type { Transaction, Vault } from "@/lib/types";
 import { useVault } from "@/hooks/use-vault";
-import { formatTime, formatUSD } from "@/lib/format";
-import { QUORUM } from "@/lib/mock-data";
-import type { Transaction } from "@/lib/types";
+import { formatTime, formatNGN } from "@/lib/format";
 import { KeyIcon } from "@/components/shared/key-icon";
 import { StatusPill } from "@/components/shared/status-pill";
 
 function PendingKeyRow({
+  vault,
   tx,
   onOpen,
 }: {
+  vault: Vault;
   tx: Transaction;
   onOpen: (id: string) => void;
 }) {
-  const partnerById = usePartnerById();
+  const requester = vault.stakeholders.find((s) => s.id === tx.requestedBy);
   return (
     <button
       onClick={() => onOpen(tx.id)}
@@ -24,10 +24,10 @@ function PendingKeyRow({
       <div>
         <p className="text-sm text-ink">{tx.recipientName}</p>
         <p className="mono text-xs text-ink-faint mt-0.5">
-          {tx.id} · Requested by {partnerById(tx.requestedBy)?.initials}
+          {tx.id} · Requested by {requester?.initials}
         </p>
       </div>
-      <p className="mono text-sm text-ink text-right">{formatUSD(tx.amount)}</p>
+      <p className="mono text-sm text-ink text-right">{formatNGN(tx.amountKobo)}</p>
       <p className="text-xs text-ink-muted">{formatTime(tx.requestedAt)}</p>
       <div />
       <div className="flex items-center justify-end gap-2">
@@ -38,17 +38,22 @@ function PendingKeyRow({
   );
 }
 
-export function TransactionsList({ onOpen }: { onOpen: (id: string) => void }) {
+export function TransactionsList({
+  vault,
+  onOpen,
+}: {
+  vault: Vault;
+  onOpen: (id: string) => void;
+}) {
   const { state } = useVault();
-  const { transactions, currentPartner } = state;
-  const members = useMembers();
+  const current = state.currentPartner;
 
-  const pendingMine = transactions.filter(
-    (t) => t.status === "pending" && !t.approvals.includes(currentPartner),
+  const pendingMine = vault.transactions.filter(
+    (t) => t.status === "pending" && !t.approvals.includes(current),
   );
-  const rest = transactions.filter((t) => !pendingMine.includes(t));
+  const rest = vault.transactions.filter((t) => !pendingMine.includes(t));
 
-  if (transactions.length === 0) {
+  if (vault.transactions.length === 0) {
     return (
       <div className="border-t hairline py-16 text-center">
         <p className="engraved text-ink-faint">No transactions yet</p>
@@ -68,7 +73,7 @@ export function TransactionsList({ onOpen }: { onOpen: (id: string) => void }) {
             <p className="engraved text-brass-deep">Pending your key</p>
           </div>
           {pendingMine.map((t) => (
-            <PendingKeyRow key={t.id} tx={t} onOpen={onOpen} />
+            <PendingKeyRow key={t.id} vault={vault} tx={t} onOpen={onOpen} />
           ))}
         </div>
       )}
@@ -94,15 +99,15 @@ export function TransactionsList({ onOpen }: { onOpen: (id: string) => void }) {
               </p>
             </div>
             <p className="mono text-sm text-ink text-right">
-              {formatUSD(t.amount)}
+              {formatNGN(t.amountKobo)}
             </p>
             <p className="text-xs text-ink-muted">{formatTime(t.requestedAt)}</p>
             <div className="flex items-center gap-1.5">
-              {members.map((p) => (
+              {vault.stakeholders.map((p) => (
                 <KeyIcon key={p.id} filled={t.approvals.includes(p.id)} />
               ))}
               <span className="mono text-xs text-ink-muted ml-1">
-                {t.approvals.length}/{QUORUM}
+                {t.approvals.length}/{t.requiredQuorum}
               </span>
             </div>
             <div className="text-right">

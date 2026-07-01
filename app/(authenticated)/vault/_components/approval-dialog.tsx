@@ -5,28 +5,30 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Field } from "@/components/shared/field";
 import { InputStyles } from "@/components/shared/input-styles";
 import { KeyArt } from "@/components/shared/key-art";
-import { usePartnerById } from "@/hooks/use-member";
 import { useVault } from "@/hooks/use-vault";
-import { formatUSD } from "@/lib/format";
+import { formatNGN } from "@/lib/format";
+import type { Vault } from "@/lib/types";
 
 export function ApprovalDialog({
+  vault,
   txId,
   onClose,
 }: {
+  vault: Vault;
   txId: string | null;
   onClose: () => void;
 }) {
   const { state, turnKey, declineTx } = useVault();
-  const tx = state.transactions.find((t) => t.id === txId) ?? null;
+  const tx = vault.transactions.find((t) => t.id === txId) ?? null;
   const current = state.currentPartner;
-  const partnerById = usePartnerById();
   const [turning, setTurning] = useState(false);
   const [done, setDone] = useState(false);
   const [declineMode, setDeclineMode] = useState(false);
   const [reason, setReason] = useState("");
 
   const open = !!tx;
-  const reviewer = partnerById(current);
+  const reviewer = vault.stakeholders.find((s) => s.id === current);
+  const requester = vault.stakeholders.find((s) => s.id === tx?.requestedBy);
 
   useEffect(() => {
     if (!open) {
@@ -72,15 +74,12 @@ export function ApprovalDialog({
 
         <div className="px-6 py-5 space-y-1">
           <p className="text-sm text-ink-muted">
-            {partnerById(tx.requestedBy)?.name} has requested a payout of
+            {requester?.name} has requested a payout of
           </p>
-          <p className="mono text-3xl text-ink">{formatUSD(tx.amount)}</p>
+          <p className="mono text-3xl text-ink">{formatNGN(tx.amountKobo)}</p>
           <p className="text-sm text-ink">
             to <span className="text-ink">{tx.recipientName}</span>
-            <span className="mono text-ink-faint">
-              {" "}
-              · {tx.recipientAccount}
-            </span>
+            <span className="mono text-ink-faint"> · {tx.recipientAccount}</span>
           </p>
           {tx.memo && <p className="text-sm text-ink-muted">Memo: {tx.memo}</p>}
         </div>

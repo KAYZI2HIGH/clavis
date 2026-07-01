@@ -1,13 +1,10 @@
 "use client";
 
-import { useMembers } from "@/hooks/use-member";
+import type { Vault } from "@/lib/types";
 import { useVault } from "@/hooks/use-vault";
-import { QUORUM } from "@/lib/mock-data";
 
-export function EmptyVault() {
-  const { state, fundVault } = useVault();
-  const members = useMembers();
-  const acct = state.fundingAccount;
+export function EmptyVault({ vault }: { vault: Vault }) {
+  const { fundVault } = useVault();
 
   return (
     <div className="max-w-3xl mx-auto pt-20 pb-16">
@@ -23,11 +20,13 @@ export function EmptyVault() {
           <p className="engraved text-ink-faint">Wire or ACH</p>
         </div>
         <div className="px-6 py-8">
-          <p className="mono text-2xl text-ink tracking-wider">{acct}</p>
+          <p className="mono text-2xl text-ink tracking-wider">
+            {vault.fundingAccount}
+          </p>
           <p className="text-sm text-ink-muted mt-3 max-w-md">
             Send deposits to this account. Funds appear in the vault once
-            cleared. Outbound transfers require {QUORUM} of {members.length}{" "}
-            partner keys.
+            cleared. Outbound transfers require {vault.quorum} of{" "}
+            {vault.stakeholders.length} partner keys.
           </p>
         </div>
         <div className="px-6 py-3 border-t hairline flex items-center justify-between">

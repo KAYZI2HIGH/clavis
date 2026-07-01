@@ -2,21 +2,26 @@
 
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
-import { useMembers } from "@/hooks/use-member";
 import { useVault } from "@/hooks/use-vault";
-import { formatUSD } from "@/lib/format";
-import { QUORUM } from "@/lib/mock-data";
+import { formatNGN } from "@/lib/format";
+import type { Vault } from "@/lib/types";
 import IdentitySwitcher from "./identity-switcher";
+import { VaultSwitcher } from "./vault-switcher";
 
-export function VaultHeader({ onSettings }: { onSettings: () => void }) {
+export function VaultHeader({
+  vault,
+  onSettings,
+}: {
+  vault: Vault;
+  onSettings: () => void;
+}) {
   const { state } = useVault();
   const { signOut } = useAuth();
   const router = useRouter();
-  const members = useMembers();
-  const { balanceCents, transactions, currentPartner } = state;
+  const current = state.currentPartner;
 
-  const pendingForMe = transactions.filter(
-    (t) => t.status === "pending" && !t.approvals.includes(currentPartner),
+  const pendingForMe = vault.transactions.filter(
+    (t) => t.status === "pending" && !t.approvals.includes(current),
   ).length;
 
   const handleSignOut = () => {
@@ -46,17 +51,16 @@ export function VaultHeader({ onSettings }: { onSettings: () => void }) {
             </svg>
           </div>
           <div>
-            <p className="serif text-lg text-ink leading-none">
-              Halverson, Ortega &amp; Reeve
-            </p>
+            <VaultSwitcher vault={vault} />
             <p className="engraved mt-1">
-              Partnership Vault · {QUORUM} of {members.length} quorum
+              Partnership Vault · {vault.quorum} of {vault.stakeholders.length}{" "}
+              quorum
             </p>
           </div>
         </div>
         <div className="flex items-center gap-3">
           <div className="relative">
-            <IdentitySwitcher />
+            <IdentitySwitcher vault={vault} />
             {pendingForMe > 0 && (
               <span
                 className="absolute -top-1 -right-1 w-2 h-2 bg-brass rounded-full"
@@ -85,7 +89,7 @@ export function VaultHeader({ onSettings }: { onSettings: () => void }) {
           className="serif text-5xl text-ink tracking-tight"
           style={{ fontVariantNumeric: "tabular-nums oldstyle-nums" }}
         >
-          {formatUSD(balanceCents)}
+          {formatNGN(vault.balanceKobo)}
         </p>
       </div>
     </header>

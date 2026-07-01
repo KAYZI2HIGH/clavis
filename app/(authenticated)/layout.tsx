@@ -1,6 +1,6 @@
 import { RequireAuth } from "@/components/providers/require-auth";
 
-export default function VaultLayout({
+export default function AuthenticatedLayout({
   children,
 }: {
   children: React.ReactNode;

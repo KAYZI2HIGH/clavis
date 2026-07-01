@@ -24,7 +24,7 @@ export function SignUpForm() {
     if (token) {
       router.push(`/join-vault?token=${token}`);
     } else {
-      router.push("/vault");
+      router.push("/home");
     }
   };
 

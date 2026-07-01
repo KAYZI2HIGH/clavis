@@ -11,17 +11,19 @@ import {
 import { Field } from "@/components/shared/field";
 import { InputStyles } from "@/components/shared/input-styles";
 import { useVault } from "@/hooks/use-vault";
-import { formatUSD } from "@/lib/format";
+import { formatNGN } from "@/lib/format";
+import type { Vault } from "@/lib/types";
 
 export function RequestPayoutSheet({
+  vault,
   open,
   onOpenChange,
 }: {
+  vault: Vault;
   open: boolean;
   onOpenChange: (b: boolean) => void;
 }) {
-  const { state, requestPayout } = useVault();
-  const balance = state.balanceCents;
+  const { requestPayout } = useVault();
   const [recipientName, setName] = useState("");
   const [recipientAccount, setAccount] = useState("");
   const [amountStr, setAmount] = useState("");
@@ -36,23 +38,25 @@ export function RequestPayoutSheet({
     }
   }, [open]);
 
-  const amountCents = Math.round(parseFloat(amountStr || "0") * 100);
+  const amountKobo = Math.round(parseFloat(amountStr || "0") * 100);
   const valid =
     recipientName.trim() &&
     recipientAccount.trim() &&
-    amountCents > 0 &&
-    amountCents <= balance;
+    amountKobo > 0 &&
+    amountKobo <= vault.balanceKobo;
 
   const submit = () => {
     if (!valid) return;
     requestPayout({
       recipientName: recipientName.trim(),
       recipientAccount: recipientAccount.trim(),
-      amount: amountCents,
+      amountKobo,
       memo: memo.trim(),
     });
     onOpenChange(false);
   };
+
+  const moreKeys = vault.quorum - 1;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -66,8 +70,8 @@ export function RequestPayoutSheet({
             Request Payout
           </SheetTitle>
           <SheetDescription className="text-sm text-ink-muted">
-            Your key counts as the first approval. One more partner must turn
-            their key before funds move.
+            Your key counts as the first approval. {moreKeys} more partner
+            {moreKeys === 1 ? "" : "s"} must turn their key before funds move.
           </SheetDescription>
         </SheetHeader>
 
@@ -89,10 +93,13 @@ export function RequestPayoutSheet({
               placeholder="ACME-XXX-0000-00"
             />
           </Field>
-          <Field label="Amount" hint={`Available ${formatUSD(balance)}`}>
+          <Field
+            label="Amount"
+            hint={`Available ${formatNGN(vault.balanceKobo)}`}
+          >
             <div className="flex items-center">
               <span className="mono text-ink-faint px-3 border hairline-strong border-r-0 h-[38px] flex items-center">
-                $
+                ₦
               </span>
               <input
                 inputMode="decimal"
@@ -105,7 +112,7 @@ export function RequestPayoutSheet({
                 style={{ borderLeft: 0 }}
               />
             </div>
-            {amountCents > balance && (
+            {amountKobo > vault.balanceKobo && (
               <p className="text-xs text-crimson mt-1.5">
                 Amount exceeds vault balance.
               </p>

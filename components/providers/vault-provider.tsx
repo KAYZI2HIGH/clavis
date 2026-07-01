@@ -9,31 +9,50 @@ import {
   useRef,
   type ReactNode,
 } from "react";
-import { getInitialVaultState, QUORUM } from "@/lib/mock-data";
-import type { Invitation, VaultDataState } from "@/lib/types";
+import { getInitialVaultState } from "@/lib/mock-data";
+import type { LinkInvitation, Vault, VaultAppState } from "@/lib/types";
 import {
-  createInvitation,
+  buildVaultFromDraft,
+  createLinkInvitation,
   vaultReducer,
   type VaultAction,
 } from "@/lib/vault-actions";
+import {
+  getActiveVault,
+  makeId,
+  makeInitials,
+} from "@/lib/vault-utils";
 
 type VaultContextValue = {
-  state: VaultDataState;
+  state: VaultAppState;
+  activeVault: Vault | null;
+  openVault: (id: string) => void;
+  leaveVault: () => void;
+  startDraft: (founderName: string) => void;
+  setDraftName: (name: string) => void;
+  setDraftQuorum: (q: number) => void;
+  setDraftMethod: (m: "link" | "email") => void;
+  addDraftStakeholder: (name: string, email: string) => void;
+  removeDraftStakeholder: (id: string) => void;
+  foundVault: () => string;
   fundVault: () => void;
   resetDemo: () => void;
   requestPayout: (input: {
     recipientName: string;
     recipientAccount: string;
-    amount: number;
+    amountKobo: number;
     memo: string;
   }) => string;
   turnKey: (txId: string, partnerId: string) => void;
   declineTx: (txId: string, partnerId: string, reason: string) => void;
-  createInvite: (placeholder: string) => Invitation;
-  acceptInvite: (token: string) => void;
-  declineInvite: (token: string) => void;
+  setQuorum: (n: number) => void;
+  createLinkInvitation: () => LinkInvitation;
+  acceptLinkInvitation: (token: string, joinerName: string, joinerId: string) => void;
+  declineLinkInvitation: () => void;
+  confirmPendingJoin: (joinId: string) => void;
+  rejectPendingJoin: (joinId: string) => void;
+  addEmailInviteToActive: (name: string, email: string) => void;
   setActor: (partnerId: string) => void;
-  updateMemberName: (id: string, name: string) => void;
 };
 
 const VaultContext = createContext<VaultContextValue | null>(null);
@@ -51,33 +70,92 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 
   const scheduleSettlement = useCallback((txId: string) => {
     setTimeout(() => {
-      const tx = stateRef.current.transactions.find((t) => t.id === txId);
+      const vault = stateRef.current.vaults.find((v) =>
+        v.transactions.some((t) => t.id === txId),
+      );
+      const tx = vault?.transactions.find((t) => t.id === txId);
       if (tx && tx.status === "sealed" && !tx.settledAt) {
         dispatch({ type: "SETTLE_TX", payload: { txId } });
       }
     }, 2200);
   }, []);
 
-  const fundVault = useCallback(() => {
-    dispatchAction({ type: "FUND_VAULT" });
+  const openVault = useCallback(
+    (id: string) => dispatchAction({ type: "OPEN_VAULT", payload: { vaultId: id } }),
+    [dispatchAction],
+  );
+
+  const leaveVault = useCallback(
+    () => dispatchAction({ type: "LEAVE_VAULT" }),
+    [dispatchAction],
+  );
+
+  const startDraft = useCallback(
+    (founderName: string) =>
+      dispatchAction({ type: "START_DRAFT", payload: { founderName } }),
+    [dispatchAction],
+  );
+
+  const setDraftName = useCallback(
+    (name: string) => dispatchAction({ type: "SET_DRAFT_NAME", payload: { name } }),
+    [dispatchAction],
+  );
+
+  const setDraftQuorum = useCallback(
+    (q: number) => dispatchAction({ type: "SET_DRAFT_QUORUM", payload: { quorum: q } }),
+    [dispatchAction],
+  );
+
+  const setDraftMethod = useCallback(
+    (m: "link" | "email") =>
+      dispatchAction({ type: "SET_DRAFT_METHOD", payload: { method: m } }),
+    [dispatchAction],
+  );
+
+  const addDraftStakeholder = useCallback(
+    (name: string, email: string) =>
+      dispatchAction({ type: "ADD_DRAFT_STAKEHOLDER", payload: { name, email } }),
+    [dispatchAction],
+  );
+
+  const removeDraftStakeholder = useCallback(
+    (id: string) =>
+      dispatchAction({ type: "REMOVE_DRAFT_STAKEHOLDER", payload: { id } }),
+    [dispatchAction],
+  );
+
+  const foundVault = useCallback(() => {
+    const draft = stateRef.current.draft;
+    if (!draft) return "";
+    const vault = buildVaultFromDraft(draft);
+    dispatchAction({ type: "FOUND_VAULT", payload: { vault } });
+    return vault.id;
   }, [dispatchAction]);
 
-  const resetDemo = useCallback(() => {
-    dispatchAction({ type: "RESET_DEMO" });
-  }, [dispatchAction]);
+  const fundVault = useCallback(
+    () => dispatchAction({ type: "FUND_VAULT" }),
+    [dispatchAction],
+  );
+
+  const resetDemo = useCallback(
+    () => dispatchAction({ type: "RESET_DEMO" }),
+    [dispatchAction],
+  );
 
   const requestPayout = useCallback(
     (input: {
       recipientName: string;
       recipientAccount: string;
-      amount: number;
+      amountKobo: number;
       memo: string;
     }) => {
-      const requestedBy = stateRef.current.currentPartner;
+      const s = stateRef.current;
+      const active = getActiveVault(s.vaults, s.activeVaultId);
+      if (!active) return "";
       const id = `TX-${Math.floor(1000 + Math.random() * 9000)}`;
       dispatchAction({
         type: "REQUEST_PAYOUT",
-        payload: { ...input, requestedBy, id },
+        payload: { ...input, requestedBy: s.currentPartner, id },
       });
       return id;
     },
@@ -86,12 +164,16 @@ export function VaultProvider({ children }: { children: ReactNode }) {
 
   const turnKey = useCallback(
     (txId: string, partnerId: string) => {
-      const txBefore = stateRef.current.transactions.find((t) => t.id === txId);
+      const s = stateRef.current;
+      const active = getActiveVault(s.vaults, s.activeVaultId);
+      if (!active) return;
+      const txBefore = active.transactions.find((t) => t.id === txId);
       if (!txBefore || txBefore.approvals.includes(partnerId)) return;
 
       const approvalsAfter = [...txBefore.approvals, partnerId];
       const willSeal =
-        txBefore.status === "pending" && approvalsAfter.length >= QUORUM;
+        txBefore.status === "pending" &&
+        approvalsAfter.length >= txBefore.requiredQuorum;
 
       dispatchAction({ type: "TURN_KEY", payload: { txId, partnerId } });
 
@@ -112,73 +194,162 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     [dispatchAction],
   );
 
-  const createInvite = useCallback(
-    (placeholder: string) => {
-      const invitedBy = stateRef.current.currentPartner;
-      const invitation = createInvitation(placeholder, invitedBy);
+  const setQuorum = useCallback(
+    (n: number) => dispatchAction({ type: "SET_QUORUM", payload: { quorum: n } }),
+    [dispatchAction],
+  );
+
+  const createLinkInvite = useCallback(() => {
+    const invitedBy = stateRef.current.currentPartner;
+    const invitation = createLinkInvitation(invitedBy);
+    dispatchAction({ type: "CREATE_LINK_INVITATION", payload: { invitation } });
+    return invitation;
+  }, [dispatchAction]);
+
+  const acceptLinkInvitation = useCallback(
+    (token: string, joinerName: string, joinerId: string) => {
+      const targetVault = stateRef.current.vaults.find((v) =>
+        v.linkInvitations.some((i) => i.token === token),
+      );
+      if (!targetVault) return;
+      const pj = {
+        id: makeId("pj"),
+        vaultId: targetVault.id,
+        name: joinerName,
+        initials: makeInitials(joinerName),
+        viaToken: token,
+        requestedAt: Date.now(),
+      };
       dispatchAction({
-        type: "CREATE_INVITE",
-        payload: { placeholder, invitedBy, invitation },
+        type: "ACCEPT_LINK_INVITATION",
+        payload: { token, pendingJoin: pj },
       });
-      return invitation;
+      void joinerId;
     },
     [dispatchAction],
   );
 
-  const acceptInvite = useCallback(
-    (token: string) => {
-      dispatchAction({ type: "ACCEPT_INVITE", payload: { token } });
+  const declineLinkInvitation = useCallback(
+    () => dispatchAction({ type: "DECLINE_LINK_INVITATION" }),
+    [dispatchAction],
+  );
+
+  const confirmPendingJoin = useCallback(
+    (joinId: string) => {
+      const active = getActiveVault(
+        stateRef.current.vaults,
+        stateRef.current.activeVaultId,
+      );
+      const pj = active?.pendingJoins.find((p) => p.id === joinId);
+      if (!pj) return;
+      const stakeholder = {
+        id: makeId("sh"),
+        name: pj.name,
+        initials: pj.initials,
+      };
+      dispatchAction({
+        type: "CONFIRM_PENDING_JOIN",
+        payload: { joinId, stakeholder },
+      });
     },
     [dispatchAction],
   );
 
-  const declineInvite = useCallback(
-    (token: string) => {
-      dispatchAction({ type: "DECLINE_INVITE", payload: { token } });
+  const rejectPendingJoin = useCallback(
+    (joinId: string) =>
+      dispatchAction({ type: "REJECT_PENDING_JOIN", payload: { joinId } }),
+    [dispatchAction],
+  );
+
+  const addEmailInviteToActive = useCallback(
+    (name: string, email: string) => {
+      const invitedBy = stateRef.current.currentPartner;
+      const invite = {
+        id: makeId("inv"),
+        name,
+        email,
+        initials: makeInitials(name),
+        invitedBy,
+        createdAt: Date.now(),
+        status: "pending" as const,
+      };
+      const stakeholder = {
+        id: makeId("sh"),
+        name,
+        initials: makeInitials(name),
+        email,
+      };
+      dispatchAction({
+        type: "ADD_EMAIL_INVITE",
+        payload: { invite, stakeholder },
+      });
     },
     [dispatchAction],
   );
 
   const setActor = useCallback(
-    (partnerId: string) => {
-      dispatchAction({ type: "SET_ACTOR", payload: { partnerId } });
-    },
+    (partnerId: string) =>
+      dispatchAction({ type: "SET_ACTOR", payload: { partnerId } }),
     [dispatchAction],
   );
 
-  const updateMemberName = useCallback(
-    (id: string, name: string) => {
-      dispatchAction({ type: "UPDATE_MEMBER_NAME", payload: { id, name } });
-    },
-    [dispatchAction],
+  const activeVault = useMemo(
+    () => getActiveVault(state.vaults, state.activeVaultId),
+    [state.vaults, state.activeVaultId],
   );
 
   const value = useMemo(
     () => ({
       state,
+      activeVault,
+      openVault,
+      leaveVault,
+      startDraft,
+      setDraftName,
+      setDraftQuorum,
+      setDraftMethod,
+      addDraftStakeholder,
+      removeDraftStakeholder,
+      foundVault,
       fundVault,
       resetDemo,
       requestPayout,
       turnKey,
       declineTx,
-      createInvite,
-      acceptInvite,
-      declineInvite,
+      setQuorum,
+      createLinkInvitation: createLinkInvite,
+      acceptLinkInvitation,
+      declineLinkInvitation,
+      confirmPendingJoin,
+      rejectPendingJoin,
+      addEmailInviteToActive,
       setActor,
-      updateMemberName,
     }),
     [
       state,
+      activeVault,
+      openVault,
+      leaveVault,
+      startDraft,
+      setDraftName,
+      setDraftQuorum,
+      setDraftMethod,
+      addDraftStakeholder,
+      removeDraftStakeholder,
+      foundVault,
       fundVault,
       resetDemo,
       requestPayout,
       turnKey,
       declineTx,
-      createInvite,
-      acceptInvite,
-      declineInvite,
+      setQuorum,
+      createLinkInvite,
+      acceptLinkInvitation,
+      declineLinkInvitation,
+      confirmPendingJoin,
+      rejectPendingJoin,
+      addEmailInviteToActive,
       setActor,
-      updateMemberName,
     ],
   );
 
