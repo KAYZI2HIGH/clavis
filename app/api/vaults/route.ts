@@ -54,7 +54,10 @@ export async function POST(request: Request) {
     !stakeholders ||
     stakeholders.length === 0
   ) {
-    return Response.json({ error: "Invalid vault creation parameters" }, { status: 400 });
+    return Response.json(
+      { error: "Invalid vault creation parameters" },
+      { status: 400 },
+    );
   }
 
   const vaultId = makeId("v");
@@ -63,18 +66,16 @@ export async function POST(request: Request) {
   const founderInitials = makeInitials(founderName);
 
   // 1. Insert vault into Supabase vaults table (founder_id is initially null to bypass circular FK check)
-  const { error: vaultError } = await getServiceClient()
-    .from("vaults")
-    .insert({
-      id: vaultId,
-      name,
-      quorum,
-      balance_kobo: 0,
-      founder_id: null,
-      funding_account: "", // placeholder, filled after Nomba VA
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    });
+  const { error: vaultError } = await getServiceClient().from("vaults").insert({
+    id: vaultId,
+    name,
+    quorum,
+    balance_kobo: 0,
+    founder_id: null,
+    funding_account: "", // placeholder, filled after Nomba VA
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  });
 
   if (vaultError) {
     log({
@@ -83,7 +84,10 @@ export async function POST(request: Request) {
       vaultId,
       error: vaultError.message,
     });
-    return Response.json({ error: "Failed to create vault in database" }, { status: 500 });
+    return Response.json(
+      { error: "Failed to create vault in database" },
+      { status: 500 },
+    );
   }
 
   // 2. Insert founder into stakeholders table
@@ -107,7 +111,10 @@ export async function POST(request: Request) {
       vaultId,
       error: stakeholderError.message,
     });
-    return Response.json({ error: "Failed to register founder stakeholder" }, { status: 500 });
+    return Response.json(
+      { error: "Failed to register founder stakeholder" },
+      { status: 500 },
+    );
   }
 
   // 2b. Link founder's stakeholder ID back to vaults.founder_id
@@ -125,7 +132,10 @@ export async function POST(request: Request) {
       vaultId,
       error: updateFounderError.message,
     });
-    return Response.json({ error: "Failed to link founder to vault" }, { status: 500 });
+    return Response.json(
+      { error: "Failed to link founder to vault" },
+      { status: 500 },
+    );
   }
 
   const emailInvitesList = [];
@@ -182,17 +192,15 @@ export async function POST(request: Request) {
     let linkError: { code?: string; message: string } | null = null;
 
     for (let attempt = 0; attempt < 3; attempt += 1) {
-      const result = await getServiceClient()
-        .from("link_invitations")
-        .insert({
-          id: liId,
-          vault_id: vaultId,
-          token: finalLinkToken,
-          placeholder: "Pending",
-          invited_by: founderStakeholderId,
-          status: "pending",
-          created_at: new Date().toISOString(),
-        });
+      const result = await getServiceClient().from("link_invitations").insert({
+        id: liId,
+        vault_id: vaultId,
+        token: finalLinkToken,
+        placeholder: "Pending",
+        invited_by: founderStakeholderId,
+        status: "pending",
+        created_at: new Date().toISOString(),
+      });
 
       linkError = result.error ?? null;
       if (!linkError) break;
@@ -213,7 +221,10 @@ export async function POST(request: Request) {
         token: finalLinkToken,
         error: linkError.message,
       });
-      return Response.json({ error: "Failed to create link invitation" }, { status: 500 });
+      return Response.json(
+        { error: "Failed to create link invitation" },
+        { status: 500 },
+      );
     }
 
     linkInvitationsList.push({
@@ -326,10 +337,15 @@ export async function GET() {
       event: "vaults_fetch_stakeholders_failed",
       error: shError.message,
     });
-    return Response.json({ error: "Failed to fetch user vaults metadata" }, { status: 500 });
+    return Response.json(
+      { error: "Failed to fetch user vaults metadata" },
+      { status: 500 },
+    );
   }
 
-  const vaultIds = Array.from(new Set(shRows?.map((row) => row.vault_id) ?? []));
+  const vaultIds = Array.from(
+    new Set(shRows?.map((row) => row.vault_id) ?? []),
+  );
   if (vaultIds.length === 0) {
     return Response.json({ vaults: [] });
   }
@@ -343,15 +359,27 @@ export async function GET() {
     pendingJoinsResult,
   ] = await Promise.all([
     getServiceClient().from("vaults").select("*").in("id", vaultIds),
-    getServiceClient().from("stakeholders").select("*").in("vault_id", vaultIds),
+    getServiceClient()
+      .from("stakeholders")
+      .select("*")
+      .in("vault_id", vaultIds),
     getServiceClient()
       .from("transactions")
       .select("*")
       .in("vault_id", vaultIds)
       .order("requested_at", { ascending: false }),
-    getServiceClient().from("link_invitations").select("*").in("vault_id", vaultIds),
-    getServiceClient().from("email_invites").select("*").in("vault_id", vaultIds),
-    getServiceClient().from("pending_joins").select("*").in("vault_id", vaultIds),
+    getServiceClient()
+      .from("link_invitations")
+      .select("*")
+      .in("vault_id", vaultIds),
+    getServiceClient()
+      .from("email_invites")
+      .select("*")
+      .in("vault_id", vaultIds),
+    getServiceClient()
+      .from("pending_joins")
+      .select("*")
+      .in("vault_id", vaultIds),
   ]);
 
   if (vaultsResult.error) {
@@ -360,7 +388,10 @@ export async function GET() {
       event: "vaults_fetch_vaults_failed",
       error: vaultsResult.error.message,
     });
-    return Response.json({ error: "Failed to fetch user vaults" }, { status: 500 });
+    return Response.json(
+      { error: "Failed to fetch user vaults" },
+      { status: 500 },
+    );
   }
 
   const vaults = vaultsResult.data ?? [];
@@ -393,8 +424,7 @@ export async function GET() {
       }));
 
     const myStakeholder = stakeholdersList.find(
-      (sh) =>
-        (email && sh.email === email) || (phone && sh.phone === phone),
+      (sh) => (email && sh.email === email) || (phone && sh.phone === phone),
     );
     const youId = myStakeholder?.id ?? v.founder_id ?? "";
 
@@ -420,7 +450,8 @@ export async function GET() {
           status: tx.status as any,
           requiredQuorum: tx.required_quorum,
           sealedAt: tx.sealed_at ? new Date(tx.sealed_at).getTime() : undefined,
-          settledAt: tx.settled_at ? new Date(tx.settled_at).getTime() : undefined,
+          settledAt:
+            tx.settled_at ? new Date(tx.settled_at).getTime() : undefined,
           declinedBy: tx.declined_by ?? undefined,
           declineReason: tx.decline_reason ?? undefined,
         };

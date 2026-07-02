@@ -64,7 +64,10 @@ export type VaultAction =
       payload: { token: string; pendingJoin: PendingJoin };
     }
   | { type: "DECLINE_LINK_INVITATION" }
-  | { type: "CONFIRM_PENDING_JOIN"; payload: { joinId: string; stakeholder: Stakeholder } }
+  | {
+      type: "CONFIRM_PENDING_JOIN";
+      payload: { joinId: string; stakeholder: Stakeholder };
+    }
   | { type: "REJECT_PENDING_JOIN"; payload: { joinId: string } }
   | {
       type: "ADD_EMAIL_INVITE";
@@ -109,19 +112,19 @@ export function buildVaultFromDraft(draft: Draft): Vault {
   const quorum = Math.min(Math.max(1, draft.quorum), stakeholders.length);
 
   const emailInvites: EmailInvite[] =
-    draft.method === "email"
-      ? stakeholders
-          .filter((s) => !s.isFounder)
-          .map((s) => ({
-            id: makeId("inv"),
-            name: s.name,
-            email: s.email ?? "",
-            initials: s.initials,
-            invitedBy: founder.id,
-            createdAt: Date.now(),
-            status: "pending" as const,
-          }))
-      : [];
+    draft.method === "email" ?
+      stakeholders
+        .filter((s) => !s.isFounder)
+        .map((s) => ({
+          id: makeId("inv"),
+          name: s.name,
+          email: s.email ?? "",
+          initials: s.initials,
+          invitedBy: founder.id,
+          createdAt: Date.now(),
+          status: "pending" as const,
+        }))
+    : [];
 
   const linkInvitations: LinkInvitation[] = [];
   if (draft.method === "link" && draft.linkToken) {
@@ -157,7 +160,9 @@ export function vaultReducer(
 ): VaultAppState {
   switch (action.type) {
     case "HYDRATE_VAULTS": {
-      const activeVault = action.payload.vaults.find((v) => v.id === state.activeVaultId);
+      const activeVault = action.payload.vaults.find(
+        (v) => v.id === state.activeVaultId,
+      );
       return {
         ...state,
         vaults: action.payload.vaults,
@@ -212,23 +217,23 @@ export function vaultReducer(
     }
 
     case "SET_DRAFT_NAME":
-      return state.draft
-        ? { ...state, draft: { ...state.draft, name: action.payload.name } }
+      return state.draft ?
+          { ...state, draft: { ...state.draft, name: action.payload.name } }
         : state;
 
     case "SET_DRAFT_QUORUM":
-      return state.draft
-        ? { ...state, draft: { ...state.draft, quorum: action.payload.quorum } }
+      return state.draft ?
+          { ...state, draft: { ...state.draft, quorum: action.payload.quorum } }
         : state;
 
     case "SET_DRAFT_METHOD":
-      return state.draft
-        ? { ...state, draft: { ...state.draft, method: action.payload.method } }
+      return state.draft ?
+          { ...state, draft: { ...state.draft, method: action.payload.method } }
         : state;
 
     case "SET_DRAFT_LINK_TOKEN":
-      return state.draft
-        ? {
+      return state.draft ?
+          {
             ...state,
             draft: { ...state.draft, linkToken: action.payload.token },
           }
@@ -353,9 +358,9 @@ export function vaultReducer(
             ...v,
             balanceKobo: v.balanceKobo - tx.amountKobo,
             transactions: v.transactions.map((t) =>
-              t.id === txId
-                ? { ...t, status: "settled" as const, settledAt: Date.now() }
-                : t,
+              t.id === txId ?
+                { ...t, status: "settled" as const, settledAt: Date.now() }
+              : t,
             ),
           };
         }),
@@ -368,14 +373,14 @@ export function vaultReducer(
         vaults: updateActiveVault(state.vaults, state.activeVaultId, (v) => ({
           ...v,
           transactions: v.transactions.map((t) =>
-            t.id === action.payload.txId
-              ? {
-                  ...t,
-                  status: "declined" as const,
-                  declinedBy: action.payload.partnerId,
-                  declineReason: action.payload.reason,
-                }
-              : t,
+            t.id === action.payload.txId ?
+              {
+                ...t,
+                status: "declined" as const,
+                declinedBy: action.payload.partnerId,
+                declineReason: action.payload.reason,
+              }
+            : t,
           ),
         })),
       };
@@ -397,10 +402,7 @@ export function vaultReducer(
         ...state,
         vaults: updateActiveVault(state.vaults, state.activeVaultId, (v) => ({
           ...v,
-          linkInvitations: [
-            action.payload.invitation,
-            ...v.linkInvitations,
-          ],
+          linkInvitations: [action.payload.invitation, ...v.linkInvitations],
         })),
       };
 
@@ -409,9 +411,9 @@ export function vaultReducer(
       return {
         ...state,
         vaults: state.vaults.map((v) =>
-          v.id === pendingJoin.vaultId
-            ? { ...v, pendingJoins: [pendingJoin, ...v.pendingJoins] }
-            : v,
+          v.id === pendingJoin.vaultId ?
+            { ...v, pendingJoins: [pendingJoin, ...v.pendingJoins] }
+          : v,
         ),
       };
     }

@@ -13,8 +13,8 @@ function getNombaApiBase(): string {
     return `${configuredBaseUrl}/v1`;
   }
 
-  return getNombaEnvironment() === "test"
-    ? "https://sandbox.nomba.com/v1"
+  return getNombaEnvironment() === "test" ?
+      "https://sandbox.nomba.com/v1"
     : "https://api.nomba.com/v1";
 }
 
@@ -97,7 +97,9 @@ function parseNombaErrorMessage(body: unknown): string {
 
   if (typeof body === "object" && body !== null) {
     const record = body as NombaErrorBody;
-    return record.message ?? record.error ?? record.description ?? "Unknown error";
+    return (
+      record.message ?? record.error ?? record.description ?? "Unknown error"
+    );
   }
 
   return "Unknown error";

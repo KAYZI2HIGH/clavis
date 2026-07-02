@@ -1,5 +1,4 @@
-const MISSING_SECRET_ERROR =
-  "NOMBA_WEBHOOK_SECRET is required but was not set";
+const MISSING_SECRET_ERROR = "NOMBA_WEBHOOK_SECRET is required but was not set";
 
 let cachedSecret: string | undefined;
 

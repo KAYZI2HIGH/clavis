@@ -63,7 +63,9 @@ export async function createVirtualAccount({
         vaultId,
         error: "Missing bankAccountNumber or bankName in Nomba response",
       });
-      throw new Error("Nomba virtual account response is missing account details");
+      throw new Error(
+        "Nomba virtual account response is missing account details",
+      );
     }
 
     const { error } = await getServiceClient()
