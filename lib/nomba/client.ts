@@ -1,12 +1,43 @@
 import { log } from "@/lib/logger";
 import {
+  getNombaApiBaseUrl,
   getNombaAccountId,
   getNombaClientId,
   getNombaClientSecret,
+  getNombaEnvironment,
 } from "@/lib/nomba/env";
 
-const NOMBA_API_BASE = "https://api.nomba.com";
-const TOKEN_URL = `${NOMBA_API_BASE}/v1/auth/token/issue`;
+function getNombaApiBase(): string {
+  const configuredBaseUrl = getNombaApiBaseUrl();
+  if (configuredBaseUrl) {
+    return `${configuredBaseUrl}/v1`;
+  }
+
+  return getNombaEnvironment() === "test"
+    ? "https://sandbox.nomba.com/v1"
+    : "https://api.nomba.com/v1";
+}
+
+function describeError(error: unknown): Record<string, unknown> {
+  if (error instanceof Error) {
+    const described: Record<string, unknown> = {
+      error: error.message,
+      name: error.name,
+    };
+
+    const cause = (error as { cause?: unknown }).cause;
+    if (cause instanceof Error) {
+      described.cause = cause.message;
+    } else if (cause !== undefined) {
+      described.cause = String(cause);
+    }
+
+    return described;
+  }
+
+  return { error: String(error) };
+}
+
 const TOKEN_TTL_MS = 60 * 60 * 1000;
 const TOKEN_REFRESH_BUFFER_MS = 5 * 60 * 1000;
 
@@ -84,18 +115,34 @@ export async function getAccessToken(): Promise<string> {
   const merchantTxRef = `auth-${Date.now()}`;
   const startedAt = Date.now();
 
-  const response = await fetch(TOKEN_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      accountId: getNombaAccountId(),
-    },
-    body: JSON.stringify({
-      grant_type: "client_credentials",
-      client_id: getNombaClientId(),
-      client_secret: getNombaClientSecret(),
-    }),
-  });
+  const TOKEN_URL = `${getNombaApiBase()}/auth/token/issue`;
+  let response: Response;
+  try {
+    response = await fetch(TOKEN_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        accountId: getNombaAccountId(),
+      },
+      body: JSON.stringify({
+        grant_type: "client_credentials",
+        client_id: getNombaClientId(),
+        client_secret: getNombaClientSecret(),
+      }),
+    });
+  } catch (error) {
+    const durationMs = Date.now() - startedAt;
+    log({
+      level: "error",
+      event: "nomba_auth_request_failed",
+      merchantTxRef,
+      url: TOKEN_URL,
+      environment: getNombaEnvironment(),
+      durationMs,
+      ...describeError(error),
+    });
+    throw error;
+  }
 
   const durationMs = Date.now() - startedAt;
   const rawBody = await response.text();
@@ -150,7 +197,7 @@ export async function nombaFetch<T = Record<string, unknown>>(
 ): Promise<T> {
   const method = options.method ?? "GET";
   const merchantTxRef = options.merchantTxRef;
-  const url = path.startsWith("http") ? path : `${NOMBA_API_BASE}${path}`;
+  const url = path.startsWith("http") ? path : `${getNombaApiBase()}${path}`;
   const startedAt = Date.now();
 
   log({
@@ -163,15 +210,32 @@ export async function nombaFetch<T = Record<string, unknown>>(
 
   const token = await getAccessToken();
 
-  const response = await fetch(url, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-      accountId: getNombaAccountId(),
-    },
-    body: options.body ? JSON.stringify(options.body) : undefined,
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        accountId: getNombaAccountId(),
+      },
+      body: options.body ? JSON.stringify(options.body) : undefined,
+    });
+  } catch (error) {
+    const durationMs = Date.now() - startedAt;
+    log({
+      level: "error",
+      event: "nomba_request_failed",
+      merchantTxRef,
+      method,
+      path,
+      url,
+      environment: getNombaEnvironment(),
+      durationMs,
+      ...describeError(error),
+    });
+    throw error;
+  }
 
   const durationMs = Date.now() - startedAt;
   const rawBody = await response.text();

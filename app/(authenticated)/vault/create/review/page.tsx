@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { KeyIcon } from "@/components/shared/key-icon";
 import { useVault } from "@/hooks/use-vault";
 import {
@@ -28,9 +29,36 @@ function CreateReviewContent() {
       if (i < total) {
         setTimeout(step, 320);
       } else {
-        setTimeout(() => {
-          foundVault();
-          router.replace("/vault");
+        setTimeout(async () => {
+          try {
+            const res = await fetch("/api/vaults", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                name: draft.name,
+                quorum: draft.quorum,
+                method: draft.method,
+                stakeholders: draft.stakeholders,
+                linkToken: draft.linkToken,
+              }),
+            });
+
+            if (!res.ok) {
+              const payload = await res.json().catch(() => ({}));
+              const errorMsg = payload.error ?? "Failed to create vault. Please try again.";
+              toast.error(errorMsg);
+              setFounding(false);
+              return;
+            }
+
+            const vault = await res.json();
+            foundVault(vault);
+            toast.success("Vault created successfully");
+            router.replace("/vault");
+          } catch (err) {
+            toast.error("Failed to create vault. Please try again.");
+            setFounding(false);
+          }
         }, 500);
       }
     };

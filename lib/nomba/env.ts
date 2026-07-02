@@ -57,3 +57,8 @@ export function getNombaEnvironment(): "test" | "live" {
 
   return "test";
 }
+
+export function getNombaApiBaseUrl(): string | null {
+  const baseUrl = process.env.NOMBA_API_BASE_URL?.trim();
+  return baseUrl ? baseUrl.replace(/\/$/, "") : null;
+}

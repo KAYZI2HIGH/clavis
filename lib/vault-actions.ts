@@ -18,6 +18,7 @@ import type {
 } from "./types";
 
 export type VaultAction =
+  | { type: "HYDRATE_VAULTS"; payload: { vaults: Vault[] } }
   | { type: "RESET_DEMO" }
   | { type: "SET_ACTOR"; payload: { partnerId: string } }
   | { type: "OPEN_VAULT"; payload: { vaultId: string } }
@@ -70,8 +71,21 @@ export type VaultAction =
       payload: { invite: EmailInvite; stakeholder: Stakeholder };
     };
 
+function makeLinkToken(): string {
+  const cryptoApi = globalThis.crypto;
+  if (cryptoApi?.getRandomValues) {
+    const bytes = new Uint8Array(16);
+    cryptoApi.getRandomValues(bytes);
+    return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0"))
+      .join("")
+      .toUpperCase();
+  }
+
+  return Math.random().toString(36).slice(2, 18).toUpperCase();
+}
+
 export function createLinkInvitation(invitedBy: string): LinkInvitation {
-  const token = Math.random().toString(36).slice(2, 10).toUpperCase();
+  const token = makeLinkToken();
   return {
     id: `INV-${token}`,
     token,
@@ -142,6 +156,16 @@ export function vaultReducer(
   action: VaultAction,
 ): VaultAppState {
   switch (action.type) {
+    case "HYDRATE_VAULTS": {
+      const activeVault = action.payload.vaults.find((v) => v.id === state.activeVaultId);
+      return {
+        ...state,
+        vaults: action.payload.vaults,
+        activeVaultId: activeVault ? state.activeVaultId : null,
+        currentPartner: activeVault ? activeVault.youId : "",
+      };
+    }
+
     case "RESET_DEMO":
       return {
         vaults: [],
@@ -174,7 +198,7 @@ export function vaultReducer(
         initials: makeInitials(name),
         isFounder: true,
       };
-      const linkToken = Math.random().toString(36).slice(2, 10).toUpperCase();
+      const linkToken = makeLinkToken();
       return {
         ...state,
         draft: {

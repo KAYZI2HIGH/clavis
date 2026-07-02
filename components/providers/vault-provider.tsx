@@ -4,11 +4,13 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useReducer,
   useRef,
   type ReactNode,
 } from "react";
+import { useSession } from "next-auth/react";
 import { getInitialVaultState } from "@/lib/mock-data";
 import type { LinkInvitation, Vault, VaultAppState } from "@/lib/types";
 import {
@@ -34,7 +36,7 @@ type VaultContextValue = {
   setDraftMethod: (m: "link" | "email") => void;
   addDraftStakeholder: (name: string, email: string) => void;
   removeDraftStakeholder: (id: string) => void;
-  foundVault: () => string;
+  foundVault: (vault?: Vault) => string;
   fundVault: () => void;
   resetDemo: () => void;
   requestPayout: (input: {
@@ -65,6 +67,31 @@ export function VaultProvider({ children }: { children: ReactNode }) {
   );
   const stateRef = useRef(state);
   stateRef.current = state;
+
+  const { data: session, status } = useSession();
+
+  useEffect(() => {
+    if (status !== "authenticated") return;
+
+    let active = true;
+    async function loadVaults() {
+      try {
+        const res = await fetch("/api/vaults");
+        if (!res.ok) throw new Error("Failed to fetch vaults");
+        const data = await res.json();
+        if (active) {
+          dispatch({ type: "HYDRATE_VAULTS", payload: { vaults: data.vaults } });
+        }
+      } catch (err) {
+        console.error("Failed to load vaults from DB:", err);
+      }
+    }
+
+    loadVaults();
+    return () => {
+      active = false;
+    };
+  }, [status]);
 
   const dispatchAction = useCallback((action: VaultAction) => {
     dispatch(action);
@@ -126,12 +153,12 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     [dispatchAction],
   );
 
-  const foundVault = useCallback(() => {
+  const foundVault = useCallback((vault?: Vault) => {
     const draft = stateRef.current.draft;
-    if (!draft) return "";
-    const vault = buildVaultFromDraft(draft);
-    dispatchAction({ type: "FOUND_VAULT", payload: { vault } });
-    return vault.id;
+    if (!vault && !draft) return "";
+    const finalVault = vault ?? buildVaultFromDraft(draft!);
+    dispatchAction({ type: "FOUND_VAULT", payload: { vault: finalVault } });
+    return finalVault.id;
   }, [dispatchAction]);
 
   const fundVault = useCallback(
