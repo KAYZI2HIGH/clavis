@@ -81,6 +81,7 @@ export function ApprovalDialog({
             to <span className="text-ink">{tx.recipientName}</span>
             <span className="mono text-ink-faint"> · {tx.recipientAccount}</span>
           </p>
+          <p className="text-sm text-ink-muted">{tx.recipientBankName}</p>
           {tx.memo && <p className="text-sm text-ink-muted">Memo: {tx.memo}</p>}
         </div>
 

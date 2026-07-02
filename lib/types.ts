@@ -17,6 +17,8 @@ export type Transaction = {
   vaultId: string;
   recipientName: string;
   recipientAccount: string;
+  recipientBankCode: string;
+  recipientBankName: string;
   amountKobo: number;
   memo: string;
   requestedBy: string;

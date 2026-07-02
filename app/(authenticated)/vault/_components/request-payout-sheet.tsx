@@ -12,6 +12,7 @@ import { Field } from "@/components/shared/field";
 import { InputStyles } from "@/components/shared/input-styles";
 import { useVault } from "@/hooks/use-vault";
 import { formatNGN } from "@/lib/format";
+import { getBankName, NIGERIAN_BANKS } from "@/lib/nigerian-banks";
 import type { Vault } from "@/lib/types";
 
 export function RequestPayoutSheet({
@@ -26,6 +27,7 @@ export function RequestPayoutSheet({
   const { requestPayout } = useVault();
   const [recipientName, setName] = useState("");
   const [recipientAccount, setAccount] = useState("");
+  const [bankCode, setBankCode] = useState("");
   const [amountStr, setAmount] = useState("");
   const [memo, setMemo] = useState("");
 
@@ -33,6 +35,7 @@ export function RequestPayoutSheet({
     if (!open) {
       setName("");
       setAccount("");
+      setBankCode("");
       setAmount("");
       setMemo("");
     }
@@ -42,6 +45,7 @@ export function RequestPayoutSheet({
   const valid =
     recipientName.trim() &&
     recipientAccount.trim() &&
+    bankCode &&
     amountKobo > 0 &&
     amountKobo <= vault.balanceKobo;
 
@@ -50,6 +54,8 @@ export function RequestPayoutSheet({
     requestPayout({
       recipientName: recipientName.trim(),
       recipientAccount: recipientAccount.trim(),
+      recipientBankCode: bankCode,
+      recipientBankName: getBankName(bankCode),
       amountKobo,
       memo: memo.trim(),
     });
@@ -85,12 +91,29 @@ export function RequestPayoutSheet({
               placeholder="Vendor LLC"
             />
           </Field>
-          <Field label="Recipient account">
+          <Field label="Bank">
+            <select
+              className="input-mech"
+              value={bankCode}
+              onChange={(e) => setBankCode(e.target.value)}
+            >
+              <option value="">Select a bank</option>
+              {NIGERIAN_BANKS.map((bank) => (
+                <option key={bank.code} value={bank.code}>
+                  {bank.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Account number">
             <input
               className="input-mech mono"
               value={recipientAccount}
-              onChange={(e) => setAccount(e.target.value)}
-              placeholder="ACME-XXX-0000-00"
+              onChange={(e) =>
+                setAccount(e.target.value.replace(/\D/g, "").slice(0, 10))
+              }
+              inputMode="numeric"
+              placeholder="0123456789"
             />
           </Field>
           <Field

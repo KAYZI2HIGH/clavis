@@ -40,6 +40,8 @@ export type VaultAction =
         id: string;
         recipientName: string;
         recipientAccount: string;
+        recipientBankCode: string;
+        recipientBankName: string;
         amountKobo: number;
         memo: string;
         requestedBy: string;
@@ -266,6 +268,8 @@ export function vaultReducer(
         id,
         recipientName,
         recipientAccount,
+        recipientBankCode,
+        recipientBankName,
         amountKobo,
         memo,
         requestedBy,
@@ -275,6 +279,8 @@ export function vaultReducer(
         vaultId: active.id,
         recipientName,
         recipientAccount,
+        recipientBankCode,
+        recipientBankName,
         amountKobo,
         memo,
         requestedBy,

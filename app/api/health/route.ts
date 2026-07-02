@@ -1,42 +1,37 @@
-import { getNombaWebhookSecret } from "@/lib/nomba/env";
+import { getAccessToken } from "@/lib/nomba/client";
+import { getNombaEnvironment } from "@/lib/nomba/env";
 import { getServiceClient } from "@/lib/supabase/service";
 
 export const runtime = "nodejs";
 
-type CheckStatus = "ok" | "not_configured" | "error";
-
 type HealthResponse = {
   status: "ok" | "degraded";
-  service: "clavis";
-  version: string;
   timestamp: string;
-  checks: {
-    api: "ok";
-    supabase: CheckStatus;
-    nomba_webhook: CheckStatus;
-  };
+  supabase: "connected" | "error";
+  nomba: "authenticated" | "error";
+  environment: "test" | "live";
 };
 
-async function checkSupabase(): Promise<CheckStatus> {
+async function checkSupabase(): Promise<"connected" | "error"> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return "not_configured";
+  if (!url || !key) return "error";
 
   try {
     const { error } = await getServiceClient()
       .from("vaults")
       .select("id", { count: "exact", head: true });
 
-    return error ? "error" : "ok";
+    return error ? "error" : "connected";
   } catch {
     return "error";
   }
 }
 
-function checkNombaWebhook(): CheckStatus {
+async function checkNomba(): Promise<"authenticated" | "error"> {
   try {
-    getNombaWebhookSecret();
-    return "ok";
+    await getAccessToken();
+    return "authenticated";
   } catch {
     return "error";
   }
@@ -46,28 +41,22 @@ async function buildHealth(): Promise<{
   body: HealthResponse;
   httpStatus: number;
 }> {
-  const [supabase, nombaWebhook] = await Promise.all([
+  const [supabase, nomba] = await Promise.all([
     checkSupabase(),
-    Promise.resolve(checkNombaWebhook()),
+    checkNomba(),
   ]);
 
-  const checks = {
-    api: "ok" as const,
+  const body: HealthResponse = {
+    status: supabase === "error" ? "degraded" : "ok",
+    timestamp: new Date().toISOString(),
     supabase,
-    nomba_webhook: nombaWebhook,
+    nomba,
+    environment: getNombaEnvironment(),
   };
 
-  const criticalFailure = supabase === "error";
-
   return {
-    body: {
-      status: criticalFailure ? "degraded" : "ok",
-      service: "clavis",
-      version: "0.1.0",
-      timestamp: new Date().toISOString(),
-      checks,
-    },
-    httpStatus: criticalFailure ? 503 : 200,
+    body,
+    httpStatus: supabase === "error" ? 503 : 200,
   };
 }
 
@@ -98,11 +87,10 @@ export async function GET(request: Request) {
 <body>
   <div class="card">
     <h1><span class="dot"></span>${isOk ? "Healthy" : "Degraded"}</h1>
-    <p>Clavis API</p>
+    <p>Clavis API · ${body.environment}</p>
     <ul>
-      <li>API: ${body.checks.api}</li>
-      <li>Supabase: ${body.checks.supabase}</li>
-      <li>Nomba webhook: ${body.checks.nomba_webhook}</li>
+      <li>Supabase: ${body.supabase}</li>
+      <li>Nomba: ${body.nomba}</li>
     </ul>
   </div>
 </body>

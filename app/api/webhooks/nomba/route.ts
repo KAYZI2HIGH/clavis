@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { after } from "next/server";
+import { log } from "@/lib/logger";
 import { getNombaWebhookSecret } from "@/lib/nomba/env";
 import {
   parseNombaPayload,
@@ -7,6 +8,7 @@ import {
   parseVirtualAccountFundedData,
   type NombaWebhookPayload,
 } from "@/lib/nomba/webhook-types";
+import { incrementVaultBalanceKobo } from "@/lib/supabase/vault-balance";
 import { getServiceClient } from "@/lib/supabase/service";
 import { makeId } from "@/lib/vault-utils";
 
@@ -20,8 +22,10 @@ async function isDuplicateRequest(requestId: string): Promise<boolean> {
     .maybeSingle();
 
   if (error) {
-    console.error("[nomba webhook] idempotency check failed", {
-      requestId,
+    log({
+      level: "error",
+      event: "webhook_idempotency_check_failed",
+      merchantTxRef: requestId,
       error: error.message,
     });
     return false;
@@ -43,34 +47,24 @@ async function recordWebhookEvent(
     if (error.code === "23505") {
       return false;
     }
-    console.error("[nomba webhook] failed to record webhook event", {
-      requestId,
+    log({
+      level: "error",
+      event: "webhook_event_persist_failed",
+      merchantTxRef: requestId,
       eventType,
       error: error.message,
     });
     throw error;
   }
 
+  log({
+    level: "info",
+    event: "webhook_event_recorded",
+    merchantTxRef: requestId,
+    eventType,
+  });
+
   return true;
-}
-
-async function incrementVaultBalanceKobo(
-  vaultId: string,
-  deltaKobo: number,
-): Promise<{ ok: true; newBalance: number } | { ok: false; error: string }> {
-  const { data, error } = await getServiceClient().rpc(
-    "increment_vault_balance_kobo",
-    {
-      p_vault_id: vaultId,
-      p_delta_kobo: deltaKobo,
-    },
-  );
-
-  if (error) {
-    return { ok: false, error: error.message };
-  }
-
-  return { ok: true, newBalance: data as number };
 }
 
 async function handleVaultFunded(
@@ -78,8 +72,11 @@ async function handleVaultFunded(
 ): Promise<void> {
   const data = parseVirtualAccountFundedData(payload.data);
   if (!data) {
-    console.warn("[nomba webhook] invalid virtual_account.funded payload", {
-      requestId: payload.requestId,
+    log({
+      level: "warn",
+      event: "webhook_invalid_payload",
+      merchantTxRef: payload.requestId,
+      eventType: payload.event,
     });
     return;
   }
@@ -91,7 +88,10 @@ async function handleVaultFunded(
     .maybeSingle();
 
   if (vaultError) {
-    console.error("[nomba webhook] vault lookup failed", {
+    log({
+      level: "error",
+      event: "webhook_vault_lookup_failed",
+      merchantTxRef: data.merchantTxRef,
       accountNumber: data.accountNumber,
       error: vaultError.message,
     });
@@ -99,9 +99,11 @@ async function handleVaultFunded(
   }
 
   if (!vault) {
-    console.warn("[nomba webhook] no vault for virtual account", {
+    log({
+      level: "warn",
+      event: "webhook_vault_not_found",
+      merchantTxRef: data.merchantTxRef,
       accountNumber: data.accountNumber,
-      requestId: payload.requestId,
     });
     return;
   }
@@ -113,16 +115,21 @@ async function handleVaultFunded(
     .maybeSingle();
 
   if (existingTx) {
-    console.warn("[nomba webhook] duplicate nomba_tx_ref, skipping", {
+    log({
+      level: "warn",
+      event: "webhook_duplicate_tx_ref",
       merchantTxRef: data.merchantTxRef,
-      requestId: payload.requestId,
+      vaultId: vault.id,
     });
     return;
   }
 
   const balanceResult = await incrementVaultBalanceKobo(vault.id, data.amount);
   if (!balanceResult.ok) {
-    console.error("[nomba webhook] failed to update vault balance", {
+    log({
+      level: "error",
+      event: "webhook_balance_update_failed",
+      merchantTxRef: data.merchantTxRef,
       vaultId: vault.id,
       error: balanceResult.error,
     });
@@ -148,16 +155,32 @@ async function handleVaultFunded(
 
   if (txError) {
     if (txError.code === "23505") {
-      console.warn("[nomba webhook] duplicate nomba_tx_ref on insert", {
+      log({
+        level: "warn",
+        event: "webhook_duplicate_tx_ref_on_insert",
         merchantTxRef: data.merchantTxRef,
+        vaultId: vault.id,
       });
       return;
     }
-    console.error("[nomba webhook] failed to insert funding transaction", {
+    log({
+      level: "error",
+      event: "webhook_funding_tx_insert_failed",
+      merchantTxRef: data.merchantTxRef,
       vaultId: vault.id,
       error: txError.message,
     });
+    return;
   }
+
+  log({
+    level: "info",
+    event: "webhook_vault_funded",
+    merchantTxRef: data.merchantTxRef,
+    vaultId: vault.id,
+    amount: data.amount,
+    newBalance: balanceResult.newBalance,
+  });
 }
 
 async function handleTransferSuccess(
@@ -165,8 +188,11 @@ async function handleTransferSuccess(
 ): Promise<void> {
   const data = parseTransferEventData(payload.data);
   if (!data) {
-    console.warn("[nomba webhook] invalid transfer.success payload", {
-      requestId: payload.requestId,
+    log({
+      level: "warn",
+      event: "webhook_invalid_payload",
+      merchantTxRef: payload.requestId,
+      eventType: payload.event,
     });
     return;
   }
@@ -178,7 +204,9 @@ async function handleTransferSuccess(
     .maybeSingle();
 
   if (txError) {
-    console.error("[nomba webhook] transfer.success lookup failed", {
+    log({
+      level: "error",
+      event: "webhook_transfer_success_lookup_failed",
       merchantTxRef: data.merchantTxRef,
       error: txError.message,
     });
@@ -186,9 +214,10 @@ async function handleTransferSuccess(
   }
 
   if (!tx) {
-    console.warn("[nomba webhook] no transaction for transfer.success", {
+    log({
+      level: "warn",
+      event: "webhook_transfer_tx_not_found",
       merchantTxRef: data.merchantTxRef,
-      requestId: payload.requestId,
     });
     return;
   }
@@ -206,11 +235,22 @@ async function handleTransferSuccess(
     .eq("id", tx.id);
 
   if (updateError) {
-    console.error("[nomba webhook] failed to settle transfer", {
+    log({
+      level: "error",
+      event: "webhook_transfer_settle_failed",
+      merchantTxRef: data.merchantTxRef,
       transactionId: tx.id,
       error: updateError.message,
     });
+    return;
   }
+
+  log({
+    level: "info",
+    event: "webhook_transfer_settled",
+    merchantTxRef: data.merchantTxRef,
+    transactionId: tx.id,
+  });
 }
 
 async function handleTransferFailed(
@@ -218,8 +258,11 @@ async function handleTransferFailed(
 ): Promise<void> {
   const data = parseTransferEventData(payload.data);
   if (!data) {
-    console.warn("[nomba webhook] invalid transfer.failed payload", {
-      requestId: payload.requestId,
+    log({
+      level: "warn",
+      event: "webhook_invalid_payload",
+      merchantTxRef: payload.requestId,
+      eventType: payload.event,
     });
     return;
   }
@@ -231,7 +274,9 @@ async function handleTransferFailed(
     .maybeSingle();
 
   if (txError) {
-    console.error("[nomba webhook] transfer.failed lookup failed", {
+    log({
+      level: "error",
+      event: "webhook_transfer_failed_lookup_failed",
       merchantTxRef: data.merchantTxRef,
       error: txError.message,
     });
@@ -239,9 +284,10 @@ async function handleTransferFailed(
   }
 
   if (!tx) {
-    console.warn("[nomba webhook] no transaction for transfer.failed", {
+    log({
+      level: "warn",
+      event: "webhook_transfer_tx_not_found",
       merchantTxRef: data.merchantTxRef,
-      requestId: payload.requestId,
     });
     return;
   }
@@ -252,7 +298,10 @@ async function handleTransferFailed(
 
   const refundResult = await incrementVaultBalanceKobo(tx.vault_id, data.amount);
   if (!refundResult.ok) {
-    console.error("[nomba webhook] failed to refund vault balance", {
+    log({
+      level: "error",
+      event: "webhook_transfer_refund_failed",
+      merchantTxRef: data.merchantTxRef,
       vaultId: tx.vault_id,
       error: refundResult.error,
     });
@@ -265,19 +314,35 @@ async function handleTransferFailed(
     .eq("id", tx.id);
 
   if (updateError) {
-    console.error("[nomba webhook] failed to mark transfer failed", {
+    log({
+      level: "error",
+      event: "webhook_transfer_mark_failed_failed",
+      merchantTxRef: data.merchantTxRef,
       transactionId: tx.id,
       error: updateError.message,
     });
+    return;
   }
+
+  log({
+    level: "info",
+    event: "webhook_transfer_failed_refunded",
+    merchantTxRef: data.merchantTxRef,
+    vaultId: tx.vault_id,
+    amount: data.amount,
+    newBalance: refundResult.newBalance,
+  });
 }
 
 async function processNombaEvent(payload: NombaWebhookPayload): Promise<void> {
   try {
     const inserted = await recordWebhookEvent(payload.requestId, payload.event);
     if (!inserted) {
-      console.warn("[nomba webhook] duplicate requestId on process", {
-        requestId: payload.requestId,
+      log({
+        level: "warn",
+        event: "webhook_duplicate_request",
+        merchantTxRef: payload.requestId,
+        eventType: payload.event,
       });
       return;
     }
@@ -293,20 +358,26 @@ async function processNombaEvent(payload: NombaWebhookPayload): Promise<void> {
         await handleTransferFailed(payload);
         break;
       case "payment_success":
-        console.info("[nomba webhook] payment_success received", {
-          requestId: payload.requestId,
+        log({
+          level: "info",
+          event: "webhook_payment_success",
+          merchantTxRef: payload.requestId,
         });
         break;
       default:
-        console.info("[nomba webhook] unhandled event type", {
-          event: payload.event,
-          requestId: payload.requestId,
+        log({
+          level: "info",
+          event: "webhook_unhandled_event",
+          merchantTxRef: payload.requestId,
+          eventType: payload.event,
         });
     }
   } catch (err) {
-    console.error("[nomba webhook] processing error", {
-      requestId: payload.requestId,
-      event: payload.event,
+    log({
+      level: "error",
+      event: "webhook_processing_error",
+      merchantTxRef: payload.requestId,
+      eventType: payload.event,
       error: err instanceof Error ? err.message : String(err),
     });
   }

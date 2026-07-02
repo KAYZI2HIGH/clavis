@@ -40,6 +40,8 @@ type VaultContextValue = {
   requestPayout: (input: {
     recipientName: string;
     recipientAccount: string;
+    recipientBankCode: string;
+    recipientBankName: string;
     amountKobo: number;
     memo: string;
   }) => string;
@@ -146,6 +148,8 @@ export function VaultProvider({ children }: { children: ReactNode }) {
     (input: {
       recipientName: string;
       recipientAccount: string;
+      recipientBankCode: string;
+      recipientBankName: string;
       amountKobo: number;
       memo: string;
     }) => {

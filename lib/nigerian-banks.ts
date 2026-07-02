@@ -1,0 +1,38 @@
+export type NigerianBank = {
+  code: string;
+  name: string;
+};
+
+/** Major Nigerian banks with CBN bank codes (used by Nomba transfers). */
+export const NIGERIAN_BANKS: NigerianBank[] = [
+  { code: "044", name: "Access Bank" },
+  { code: "063", name: "Access Bank (Diamond)" },
+  { code: "050", name: "Ecobank Nigeria" },
+  { code: "070", name: "Fidelity Bank" },
+  { code: "011", name: "First Bank of Nigeria" },
+  { code: "214", name: "First City Monument Bank (FCMB)" },
+  { code: "058", name: "Guaranty Trust Bank (GTBank)" },
+  { code: "030", name: "Heritage Bank" },
+  { code: "301", name: "Jaiz Bank" },
+  { code: "082", name: "Keystone Bank" },
+  { code: "999992", name: "Opay" },
+  { code: "999991", name: "PalmPay" },
+  { code: "076", name: "Polaris Bank" },
+  { code: "101", name: "Providus Bank" },
+  { code: "221", name: "Stanbic IBTC Bank" },
+  { code: "232", name: "Sterling Bank" },
+  { code: "100", name: "Suntrust Bank" },
+  { code: "032", name: "Union Bank of Nigeria" },
+  { code: "033", name: "United Bank for Africa (UBA)" },
+  { code: "215", name: "Unity Bank" },
+  { code: "035", name: "Wema Bank" },
+  { code: "057", name: "Zenith Bank" },
+];
+
+export function getBankByCode(code: string): NigerianBank | undefined {
+  return NIGERIAN_BANKS.find((bank) => bank.code === code);
+}
+
+export function getBankName(code: string): string {
+  return getBankByCode(code)?.name ?? code;
+}

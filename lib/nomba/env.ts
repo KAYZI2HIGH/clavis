@@ -19,3 +19,41 @@ export function getNombaWebhookSecret(): string {
 export function assertNombaWebhookConfigured(): void {
   getNombaWebhookSecret();
 }
+
+function requireEnv(name: string): string {
+  const value = process.env[name]?.trim();
+  if (!value) {
+    throw new Error(`${name} is required but was not set`);
+  }
+  return value;
+}
+
+export function getNombaClientId(): string {
+  return requireEnv("NOMBA_CLIENT_ID");
+}
+
+export function getNombaClientSecret(): string {
+  return requireEnv("NOMBA_CLIENT_SECRET");
+}
+
+export function getNombaAccountId(): string {
+  return requireEnv("NOMBA_ACCOUNT_ID");
+}
+
+export function getNombaSubaccountId(): string {
+  return requireEnv("NOMBA_SUBACCOUNT_ID");
+}
+
+export function getNombaEnvironment(): "test" | "live" {
+  const configured = process.env.NOMBA_ENV?.trim().toLowerCase();
+  if (configured === "live" || configured === "test") {
+    return configured;
+  }
+
+  const clientId = process.env.NOMBA_CLIENT_ID?.toLowerCase() ?? "";
+  if (clientId.includes("live") || clientId.includes("prod")) {
+    return "live";
+  }
+
+  return "test";
+}

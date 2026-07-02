@@ -83,6 +83,10 @@ export function TxDetailSheet({
                 value={<span className="text-ink">{tx.recipientName}</span>}
               />
               <DetailRow
+                label="Bank"
+                value={<span className="text-ink">{tx.recipientBankName}</span>}
+              />
+              <DetailRow
                 label="Account"
                 value={
                   <span className="mono text-sm text-ink">
