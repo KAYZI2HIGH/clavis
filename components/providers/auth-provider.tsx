@@ -5,10 +5,9 @@ import {
   useCallback,
   useContext,
   useMemo,
-  useState,
   type ReactNode,
 } from "react";
-import { makeId } from "@/lib/vault-utils";
+import { signOut as nextAuthSignOut, useSession } from "next-auth/react";
 
 type AuthContextValue = {
   authedUserId: string | null;
@@ -22,31 +21,23 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [authedUserId, setAuthedUserId] = useState<string | null>(null);
-  const [authedName, setAuthedName] = useState("");
-  const [authedPhone, setAuthedPhone] = useState("");
+  const { data: session } = useSession();
+  const authedUserId = session?.user?.id ?? null;
+  const authedName = session?.user?.name ?? "";
+  const authedPhone = session?.user?.phone ?? "";
 
   const signUp = useCallback(
-    ({ name, phone }: { name: string; phone: string; pin: string }) => {
-      setAuthedUserId(makeId("usr"));
-      setAuthedName(name.trim());
-      setAuthedPhone(phone.trim());
-    },
+    (_input: { name: string; phone: string; pin: string }) => {},
     [],
   );
 
-  const signIn = useCallback(({ phone, pin }: { phone: string; pin: string }) => {
-    if (!phone.trim() || pin.length !== 4) return false;
-    setAuthedUserId((prev) => prev ?? makeId("usr"));
-    setAuthedName((prev) => prev || "Founder");
-    setAuthedPhone(phone.trim());
-    return true;
-  }, []);
+  const signIn = useCallback(
+    (_input: { phone: string; pin: string }) => false,
+    [],
+  );
 
   const signOut = useCallback(() => {
-    setAuthedUserId(null);
-    setAuthedName("");
-    setAuthedPhone("");
+    void nextAuthSignOut({ redirectTo: "/sign-in" });
   }, []);
 
   const value = useMemo(

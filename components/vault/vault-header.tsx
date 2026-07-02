@@ -1,7 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/hooks/use-auth";
+import { signOut } from "next-auth/react";
 import { useVault } from "@/hooks/use-vault";
 import { formatNGN } from "@/lib/format";
 import type { Vault } from "@/lib/types";
@@ -16,8 +15,6 @@ export function VaultHeader({
   onSettings: () => void;
 }) {
   const { state } = useVault();
-  const { signOut } = useAuth();
-  const router = useRouter();
   const current = state.currentPartner;
 
   const pendingForMe = vault.transactions.filter(
@@ -25,8 +22,7 @@ export function VaultHeader({
   ).length;
 
   const handleSignOut = () => {
-    signOut();
-    router.push("/");
+    void signOut({ redirectTo: "/sign-in" });
   };
 
   return (

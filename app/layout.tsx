@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AppProviders } from "@/components/providers/app-providers";
 import { HashJoinRedirect } from "@/components/providers/hash-join-redirect";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -33,6 +34,7 @@ export default function RootLayout({
         <AppProviders>
           <HashJoinRedirect />
           {children}
+          <Toaster position="top-right" richColors closeButton />
         </AppProviders>
       </body>
     </html>
