@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { after } from "next/server";
+import { getNombaWebhookSecret } from "@/lib/nomba/env";
 import {
   parseNombaPayload,
   parseTransferEventData,
@@ -53,6 +54,25 @@ async function recordWebhookEvent(
   return true;
 }
 
+async function incrementVaultBalanceKobo(
+  vaultId: string,
+  deltaKobo: number,
+): Promise<{ ok: true; newBalance: number } | { ok: false; error: string }> {
+  const { data, error } = await getServiceClient().rpc(
+    "increment_vault_balance_kobo",
+    {
+      p_vault_id: vaultId,
+      p_delta_kobo: deltaKobo,
+    },
+  );
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  return { ok: true, newBalance: data as number };
+}
+
 async function handleVaultFunded(
   payload: NombaWebhookPayload,
 ): Promise<void> {
@@ -66,7 +86,7 @@ async function handleVaultFunded(
 
   const { data: vault, error: vaultError } = await getServiceClient()
     .from("vaults")
-    .select("id, balance_kobo, quorum")
+    .select("id, quorum")
     .eq("nomba_virtual_account_number", data.accountNumber)
     .maybeSingle();
 
@@ -100,17 +120,11 @@ async function handleVaultFunded(
     return;
   }
 
-  const newBalance = vault.balance_kobo + data.amount;
-
-  const { error: balanceError } = await getServiceClient()
-    .from("vaults")
-    .update({ balance_kobo: newBalance, updated_at: new Date().toISOString() })
-    .eq("id", vault.id);
-
-  if (balanceError) {
+  const balanceResult = await incrementVaultBalanceKobo(vault.id, data.amount);
+  if (!balanceResult.ok) {
     console.error("[nomba webhook] failed to update vault balance", {
       vaultId: vault.id,
-      error: balanceError.message,
+      error: balanceResult.error,
     });
     return;
   }
@@ -236,32 +250,11 @@ async function handleTransferFailed(
     return;
   }
 
-  const { data: vault, error: vaultError } = await getServiceClient()
-    .from("vaults")
-    .select("balance_kobo")
-    .eq("id", tx.vault_id)
-    .maybeSingle();
-
-  if (vaultError || !vault) {
-    console.error("[nomba webhook] vault lookup for refund failed", {
-      vaultId: tx.vault_id,
-      error: vaultError?.message,
-    });
-    return;
-  }
-
-  const { error: refundError } = await getServiceClient()
-    .from("vaults")
-    .update({
-      balance_kobo: vault.balance_kobo + data.amount,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", tx.vault_id);
-
-  if (refundError) {
+  const refundResult = await incrementVaultBalanceKobo(tx.vault_id, data.amount);
+  if (!refundResult.ok) {
     console.error("[nomba webhook] failed to refund vault balance", {
       vaultId: tx.vault_id,
-      error: refundError.message,
+      error: refundResult.error,
     });
     return;
   }
@@ -320,17 +313,11 @@ async function processNombaEvent(payload: NombaWebhookPayload): Promise<void> {
 }
 
 export async function POST(request: Request) {
-  const webhookSecret = process.env.NOMBA_WEBHOOK_SECRET;
-  if (!webhookSecret) {
-    console.error("[nomba webhook] NOMBA_WEBHOOK_SECRET is not configured");
-    return new Response("server misconfigured", { status: 500 });
-  }
-
   const rawBody = Buffer.from(await request.arrayBuffer());
 
   const signature = request.headers.get("nomba-signature");
   const expected = crypto
-    .createHmac("sha256", webhookSecret)
+    .createHmac("sha256", getNombaWebhookSecret())
     .update(rawBody)
     .digest("hex");
 
