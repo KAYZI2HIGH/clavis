@@ -7,11 +7,12 @@ import { signOut } from "next-auth/react";
 import { useVault } from "@/hooks/use-vault";
 import { formatNGN } from "@/lib/format";
 import type { Vault } from "@/lib/types";
-import IdentitySwitcher from "./identity-switcher";
+import IdentitySwitcher from "./profile";
 import { VaultSwitcher } from "./vault-switcher";
 
 import { useRetryVAMutation } from "@/hooks/use-retry-va-mutation";
 import { Loader2 } from "lucide-react";
+import Profile from "./profile";
 
 export function VaultHeader({
   vault,
@@ -95,7 +96,7 @@ export function VaultHeader({
         </div>
         <div className="flex items-center gap-3">
           <div className="relative">
-            <IdentitySwitcher vault={vault} />
+            <Profile vault={vault} />
             {pendingForMe > 0 && (
               <span
                 className="absolute -top-1 -right-1 w-2 h-2 bg-brass rounded-full"
