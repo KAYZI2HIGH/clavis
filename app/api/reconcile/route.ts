@@ -34,10 +34,10 @@ async function reconcileVault(vaultId: string, virtualAccount: string) {
   const orphansCredited: string[] = [];
   const critical: string[] = [];
 
-  // Date range: last 24 hours formatted as YYYY-MM-DD
+  // Date range: look back 30 days formatted as YYYY-MM-DD
   const formatReconDate = (date: Date) => date.toISOString().split("T")[0];
-  const dateTo = formatReconDate(new Date());
-  const dateFrom = formatReconDate(new Date(Date.now() - 24 * 60 * 60 * 1000));
+  const dateTo = formatReconDate(new Date(Date.now() + 24 * 60 * 60 * 1000)); // Include tomorrow to prevent timezone edge cases
+  const dateFrom = formatReconDate(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
 
   // Fetch transactions from Nomba for this period scoping it to our account
   let nombaTransactions: any[] = [];
@@ -73,7 +73,7 @@ async function reconcileVault(vaultId: string, virtualAccount: string) {
 
     // Case 1: Nomba says success, we say executing → settle it
     if (
-      nombaTx.status === "success" &&
+      nombaTx.status?.toUpperCase() === "SUCCESS" &&
       localTx?.status === "executing"
     ) {
       await getServiceClient()
@@ -96,7 +96,7 @@ async function reconcileVault(vaultId: string, virtualAccount: string) {
 
     // Case 2: Nomba says failed, we say settled → critical
     if (
-      nombaTx.status === "failed" &&
+      nombaTx.status?.toUpperCase() === "FAILED" &&
       localTx?.status === "settled"
     ) {
       const msg = `CRITICAL: tx ${ref} settled in our DB but failed on Nomba`;
@@ -111,7 +111,7 @@ async function reconcileVault(vaultId: string, virtualAccount: string) {
 
     // Case 3: Nomba says failed, we say executing → fail it + refund
     if (
-      nombaTx.status === "failed" &&
+      nombaTx.status?.toUpperCase() === "FAILED" &&
       localTx?.status === "executing"
     ) {
       // Update transaction to failed
@@ -138,8 +138,13 @@ async function reconcileVault(vaultId: string, virtualAccount: string) {
 
     // Case 4: Exists on Nomba but not in our DB at all
     // Only handle incoming credits (virtual account funding)
-    if (!localTx && nombaTx.type === "credit" && 
-        nombaTx.status === "success") {
+    const isCredit = 
+      nombaTx.type?.toUpperCase() === "CREDIT" || 
+      nombaTx.transactionType?.toUpperCase() === "VACT_TRANSFER" ||
+      nombaTx.type === "credit";
+
+    if (!localTx && isCredit && 
+        nombaTx.status?.toUpperCase() === "SUCCESS") {
       // Credit vault balance
       await getServiceClient().rpc("increment_vault_balance", {
         vault_id: vaultId,
