@@ -1,8 +1,7 @@
 export type NombaEventType =
-  | "virtual_account.funded"
-  | "transfer.success"
-  | "transfer.failed"
   | "payment_success"
+  | "payout_success"
+  | "payout_failed"
   | string;
 
 export type NombaWebhookPayload = {
@@ -30,7 +29,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 export function parseNombaPayload(raw: unknown): NombaWebhookPayload | null {
   if (!isRecord(raw)) return null;
-  const event = raw.event;
+  const event = raw.event_type;
   const requestId = raw.requestId;
   const data = raw.data;
   if (typeof event !== "string" || typeof requestId !== "string") return null;
@@ -41,10 +40,13 @@ export function parseNombaPayload(raw: unknown): NombaWebhookPayload | null {
 export function parseVirtualAccountFundedData(
   data: Record<string, unknown>,
 ): VirtualAccountFundedData | null {
-  const accountNumber = data.accountNumber;
-  const amount = data.amount;
-  const currency = data.currency;
-  const merchantTxRef = data.merchantTxRef;
+  const transaction = data.transaction;
+  if (!isRecord(transaction)) return null;
+
+  const accountNumber = transaction.aliasAccountNumber;
+  const amount = transaction.transactionAmount;
+  const currency = transaction.currency || "NGN";
+  const merchantTxRef = transaction.transactionId;
   if (
     typeof accountNumber !== "string" ||
     typeof amount !== "number" ||
@@ -59,9 +61,12 @@ export function parseVirtualAccountFundedData(
 export function parseTransferEventData(
   data: Record<string, unknown>,
 ): TransferEventData | null {
-  const merchantTxRef = data.merchantTxRef;
-  const amount = data.amount;
-  const currency = data.currency;
+  const transaction = data.transaction;
+  if (!isRecord(transaction)) return null;
+
+  const merchantTxRef = transaction.transactionId;
+  const amount = transaction.transactionAmount;
+  const currency = transaction.currency || "NGN";
   if (
     typeof merchantTxRef !== "string" ||
     typeof amount !== "number" ||

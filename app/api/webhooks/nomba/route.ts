@@ -348,21 +348,14 @@ async function processNombaEvent(payload: NombaWebhookPayload): Promise<void> {
     }
 
     switch (payload.event) {
-      case "virtual_account.funded":
+      case "payment_success":
         await handleVaultFunded(payload);
         break;
-      case "transfer.success":
+      case "payout_success":
         await handleTransferSuccess(payload);
         break;
-      case "transfer.failed":
+      case "payout_failed":
         await handleTransferFailed(payload);
-        break;
-      case "payment_success":
-        log({
-          level: "info",
-          event: "webhook_payment_success",
-          merchantTxRef: payload.requestId,
-        });
         break;
       default:
         log({
@@ -387,16 +380,13 @@ export async function POST(request: Request) {
   const rawBody = Buffer.from(await request.arrayBuffer());
 
   const signature = request.headers.get("nomba-signature");
-  const expected = crypto
-    .createHmac("sha256", getNombaWebhookSecret())
-    .update(rawBody)
-    .digest("hex");
+  const timestamp = request.headers.get("nomba-timestamp");
 
-  if (!signature || signature !== expected) {
-    return new Response("bad signature", { status: 401 });
+  if (!signature || !timestamp) {
+    return new Response("missing headers", { status: 400 });
   }
 
-  let parsed: unknown;
+  let parsed: any;
   try {
     parsed = JSON.parse(rawBody.toString());
   } catch {
@@ -406,6 +396,45 @@ export async function POST(request: Request) {
   const payload = parseNombaPayload(parsed);
   if (!payload) {
     return new Response("invalid payload", { status: 400 });
+  }
+
+  // Construct the colon-separated signature payload formatted string
+  // Format: {event_type}:{requestId}:{userId}:{walletId}:{transactionId}:{type}:{time}:{responseCode}:{timestamp}
+  const data = parsed.data || {};
+  const merchant = data.merchant || {};
+  const transaction = data.transaction || {};
+
+  const eventType = parsed.event_type || "";
+  const requestId = parsed.requestId || "";
+  const userId = merchant.userId || "";
+  const walletId = merchant.walletId || "";
+  const transactionId = transaction.transactionId || "";
+  const txType = transaction.type || "";
+  const txTime = transaction.time || "";
+  let responseCode = transaction.responseCode || "";
+  if (responseCode === "null") {
+    responseCode = "";
+  }
+
+  const hashingPayload = `${eventType}:${requestId}:${userId}:${walletId}:${transactionId}:${txType}:${txTime}:${responseCode}:${timestamp}`;
+
+  const expected = crypto
+    .createHmac("sha256", getNombaWebhookSecret())
+    .update(hashingPayload)
+    .digest("base64");
+
+  const sigBuffer = Buffer.from(signature);
+  const expBuffer = Buffer.from(expected);
+
+  let signaturesMatch = false;
+  try {
+    signaturesMatch = crypto.timingSafeEqual(sigBuffer, expBuffer);
+  } catch {
+    signaturesMatch = false;
+  }
+
+  if (!signaturesMatch) {
+    return new Response("bad signature", { status: 401 });
   }
 
   if (await isDuplicateRequest(payload.requestId)) {
