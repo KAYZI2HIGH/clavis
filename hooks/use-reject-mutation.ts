@@ -30,7 +30,7 @@ export function useRejectMutation(vaultId: string) {
       qc.invalidateQueries({ 
         queryKey: queryKeys.vaults.detail(vaultId) 
       });
-      toast.success("Request declined.");
+      toast.success("Payout declined.");
     },
     onError: (error: Error) => {
       toast.error(error.message);

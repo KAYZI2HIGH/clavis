@@ -70,7 +70,8 @@ export async function initiateTransfer({
   bankCode,
   narration,
   merchantTxRef,
-  vaultName,
+  accountName,
+  senderName,
   vaultId,
 }: {
   amount: number;
@@ -78,16 +79,19 @@ export async function initiateTransfer({
   bankCode: string;
   narration: string;
   merchantTxRef: string;
-  vaultName?: string;
+  accountName?: string;
+  senderName?: string;
   vaultId?: string;
 }): Promise<TransferInitiationResponse> {
   if (!Number.isInteger(amount) || amount <= 0) {
     throw new Error("Amount must be a positive integer in kobo");
   }
 
-  const recipient = await lookupRecipient({ accountNumber, bankCode });
+  const resolvedAccountName =
+    accountName ||
+    (await lookupRecipient({ accountNumber, bankCode })).accountName;
 
-  const senderName = vaultName ?? vaultId ?? "Clavis Vault";
+  const resolvedSenderName = senderName || "Clavis Vault";
 
   log({
     level: "info",
@@ -95,7 +99,7 @@ export async function initiateTransfer({
     merchantTxRef,
     vaultId,
     amount,
-    recipientName: recipient.accountName,
+    recipientName: resolvedAccountName,
   });
 
   const data = await nombaFetch<TransferInitiationResponse>("/transfers/bank", {
@@ -105,8 +109,8 @@ export async function initiateTransfer({
       amount,
       bankCode,
       accountNumber,
-      accountName: recipient.accountName,
-      senderName,
+      accountName: resolvedAccountName,
+      senderName: resolvedSenderName,
       narration,
       merchantTxRef,
     },

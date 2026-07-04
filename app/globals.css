@@ -45,6 +45,13 @@
   --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
 
   --ease-mech: cubic-bezier(0.2, 0.6, 0.2, 1);
+
+  --animate-marquee: marquee 20s linear infinite;
+
+  @keyframes marquee {
+    0% { transform: translateX(0%); }
+    100% { transform: translateX(-50%); }
+  }
 }
 
 :root {

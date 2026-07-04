@@ -1,17 +1,20 @@
-"use client";
+  "use client";
 
-import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { rejectSchema, type RejectSchema } from "@/lib/schemas";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Field } from "@/components/shared/field";
-import { InputStyles } from "@/components/shared/input-styles";
-import { KeyArt } from "@/components/shared/key-art";
-import { useVault } from "@/hooks/use-vault";
-import { formatNGN } from "@/lib/format";
-import type { Vault } from "@/lib/types";
-import { Loader2 } from "lucide-react";
+  import { useEffect, useState } from "react";
+  import { useForm } from "react-hook-form";
+  import { zodResolver } from "@hookform/resolvers/zod";
+  import { rejectSchema, type RejectSchema } from "@/lib/schemas";
+  import { Dialog, DialogContent } from "@/components/ui/dialog";
+  import { Field } from "@/components/shared/field";
+  import { InputStyles } from "@/components/shared/input-styles";
+  import { KeyArt } from "@/components/shared/key-art";
+  import { useVault } from "@/hooks/use-vault";
+  import { formatNGN } from "@/lib/format";
+  import type { Vault } from "@/lib/types";
+  import { Loader2 } from "lucide-react";
+
+import { useApproveMutation } from "@/hooks/use-approve-mutation";
+import { useRejectMutation } from "@/hooks/use-reject-mutation";
 
 export function ApprovalDialog({
   vault,
@@ -22,7 +25,10 @@ export function ApprovalDialog({
   txId: string | null;
   onClose: () => void;
 }) {
-  const { state, turnKey, declineTx } = useVault();
+  const { state } = useVault();
+  const approveMutation = useApproveMutation(vault.id);
+  const rejectMutation = useRejectMutation(vault.id);
+
   const tx = vault.transactions.find((t) => t.id === txId) ?? null;
   const current = state.currentPartner;
   const [turning, setTurning] = useState(false);
@@ -33,7 +39,7 @@ export function ApprovalDialog({
     register,
     handleSubmit,
     reset,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<RejectSchema>({
     resolver: zodResolver(rejectSchema),
     defaultValues: {
@@ -56,18 +62,23 @@ export function ApprovalDialog({
 
   if (!tx || !reviewer) return null;
 
-  const handleTurn = () => {
+  const handleTurn = async () => {
     if (turning || done) return;
     setTurning(true);
-    setTimeout(() => {
-      turnKey(tx.id, reviewer.id);
+    try {
+      await approveMutation.mutateAsync({ txId: tx.id });
       setDone(true);
       setTimeout(onClose, 1100);
-    }, 900);
+    } catch {
+      setTurning(false);
+    }
   };
 
-  const onSubmitDecline = (data: RejectSchema) => {
-    declineTx(tx.id, reviewer.id, data.reason.trim());
+  const onSubmitDecline = async (data: RejectSchema) => {
+    await rejectMutation.mutateAsync({
+      txId: tx.id,
+      reason: data.reason.trim(),
+    });
     onClose();
   };
 
@@ -107,7 +118,7 @@ export function ApprovalDialog({
                   autoFocus
                   className="input-mech"
                   placeholder="State why you are declining"
-                  disabled={isSubmitting}
+                  disabled={rejectMutation.isPending}
                   {...register("reason")}
                 />
                 {errors.reason && (
@@ -147,9 +158,9 @@ export function ApprovalDialog({
                 <button
                   type="submit"
                   className="btn-mech btn-mech-danger disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center min-w-[130px]"
-                  disabled={isSubmitting}
+                  disabled={rejectMutation.isPending}
                 >
-                  {isSubmitting ? (
+                  {rejectMutation.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     "Confirm Decline"
@@ -162,7 +173,7 @@ export function ApprovalDialog({
                   type="button"
                   className="btn-mech btn-mech-danger"
                   onClick={() => setDeclineMode(true)}
-                  disabled={turning || done}
+                  disabled={turning || done || approveMutation.isPending}
                 >
                   Decline
                 </button>
@@ -170,9 +181,9 @@ export function ApprovalDialog({
                   type="button"
                   className="btn-mech btn-mech-primary disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center min-w-[150px]"
                   onClick={handleTurn}
-                  disabled={turning || done}
+                  disabled={turning || done || approveMutation.isPending}
                 >
-                  {turning || done ? (
+                  {turning || done || approveMutation.isPending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     "Turn Key to Approve"
@@ -182,7 +193,7 @@ export function ApprovalDialog({
             )}
           </div>
         </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
+        </DialogContent>
+      </Dialog>
+    );
+  }

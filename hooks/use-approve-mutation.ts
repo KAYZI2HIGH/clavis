@@ -16,11 +16,16 @@ export function useApproveMutation(vaultId: string) {
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       qc.invalidateQueries({ 
         queryKey: queryKeys.vaults.detail(vaultId) 
       });
       toast.success("Key turned. Approval recorded.");
+      if (data?.quorumReached) {
+        toast.success("Quorum reached. Payout is being processed.", {
+          duration: 6000,
+        });
+      }
     },
     onError: (error: Error) => {
       toast.error(error.message);

@@ -9,8 +9,11 @@ import { getServiceClient } from "@/lib/supabase/service";
 
 export const runtime = "nodejs";
 
+import { lookupRecipient } from "@/lib/nomba/transfers";
+
 type TransferRequestBody = {
   transactionId?: string;
+  vaultId?: string;
 };
 
 type TransactionRow = {
@@ -23,10 +26,8 @@ type TransactionRow = {
   memo: string;
   narration: string | null;
   status: string;
+  nomba_tx_ref: string;
 };
-
-/** Quorum-reached transactions ready for Nomba execution. */
-const EXECUTABLE_STATUSES = new Set(["sealed", "approved"]);
 
 export async function POST(request: Request) {
   let body: TransferRequestBody;
@@ -38,16 +39,18 @@ export async function POST(request: Request) {
   }
 
   const transactionId = body.transactionId?.trim();
-  if (!transactionId) {
-    return Response.json({ error: "transactionId is required" }, { status: 400 });
+  const reqVaultId = body.vaultId?.trim();
+  if (!transactionId || !reqVaultId) {
+    return Response.json({ error: "transactionId and vaultId are required" }, { status: 400 });
   }
 
   const { data: tx, error: txError } = await getServiceClient()
     .from("transactions")
     .select(
-      "id, vault_id, recipient_name, recipient_account, recipient_bank_code, amount_kobo, memo, narration, status",
+      "id, vault_id, recipient_name, recipient_account, recipient_bank_code, amount_kobo, memo, narration, status, nomba_tx_ref",
     )
     .eq("id", transactionId)
+    .eq("vault_id", reqVaultId)
     .maybeSingle();
 
   if (txError) {
@@ -66,10 +69,10 @@ export async function POST(request: Request) {
 
   const transaction = tx as TransactionRow;
 
-  if (!EXECUTABLE_STATUSES.has(transaction.status)) {
+  if (transaction.status !== "executing") {
     return Response.json(
       {
-        error: `Transaction must be approved before transfer (current status: ${transaction.status})`,
+        error: `Transaction must be in executing status before transfer (current status: ${transaction.status})`,
       },
       { status: 409 },
     );
@@ -90,6 +93,20 @@ export async function POST(request: Request) {
     );
   }
 
+  // Fetch vault senderName
+  const { data: vault, error: vaultError } = await getServiceClient()
+    .from("vaults")
+    .select("name")
+    .eq("id", transaction.vault_id)
+    .maybeSingle();
+
+  if (vaultError || !vault) {
+    return Response.json(
+      { error: "Failed to load vault details" },
+      { status: 500 }
+    );
+  }
+
   const deductResult = await deductVaultBalanceKobo(
     transaction.vault_id,
     amountKobo,
@@ -99,7 +116,7 @@ export async function POST(request: Request) {
     log({
       level: "warn",
       event: "transfer_insufficient_balance",
-      merchantTxRef: transaction.id,
+      merchantTxRef: transaction.nomba_tx_ref,
       vaultId: transaction.vault_id,
       amount: amountKobo,
       error: deductResult.error,
@@ -113,31 +130,11 @@ export async function POST(request: Request) {
   log({
     level: "info",
     event: "transfer_balance_deducted",
-    merchantTxRef: transaction.id,
+    merchantTxRef: transaction.nomba_tx_ref,
     vaultId: transaction.vault_id,
     amount: amountKobo,
     newBalance: deductResult.newBalance,
   });
-
-  const { error: statusError } = await getServiceClient()
-    .from("transactions")
-    .update({
-      status: "executing",
-      nomba_tx_ref: transaction.id,
-    })
-    .eq("id", transaction.id);
-
-  if (statusError) {
-    await incrementVaultBalanceKobo(transaction.vault_id, amountKobo);
-    log({
-      level: "error",
-      event: "transfer_status_update_failed",
-      merchantTxRef: transaction.id,
-      vaultId: transaction.vault_id,
-      error: statusError.message,
-    });
-    return Response.json({ error: "Failed to update transaction status" }, { status: 500 });
-  }
 
   const narration =
     transaction.narration?.trim() ||
@@ -145,19 +142,36 @@ export async function POST(request: Request) {
     `Clavis payout to ${transaction.recipient_name}`;
 
   try {
+    // Call lookupRecipient for fresh accountName
+    const lookup = await lookupRecipient({
+      accountNumber: transaction.recipient_account,
+      bankCode: transaction.recipient_bank_code,
+    });
+
+    log({
+      level: "info",
+      event: "transfer_lookup_recipient_success",
+      merchantTxRef: transaction.nomba_tx_ref,
+      vaultId: transaction.vault_id,
+      accountName: lookup.accountName,
+    });
+
     await initiateTransfer({
       amount: amountKobo,
       accountNumber: transaction.recipient_account,
       bankCode: transaction.recipient_bank_code,
+      accountName: lookup.accountName,
+      senderName: vault.name,
       narration,
-      merchantTxRef: transaction.id,
+      merchantTxRef: transaction.nomba_tx_ref,
       vaultId: transaction.vault_id,
     });
   } catch (err) {
+    // Refund balance on failure
     await incrementVaultBalanceKobo(transaction.vault_id, amountKobo);
     await getServiceClient()
       .from("transactions")
-      .update({ status: "sealed", nomba_tx_ref: null })
+      .update({ status: "pending" })
       .eq("id", transaction.id);
 
     const message =
@@ -170,7 +184,7 @@ export async function POST(request: Request) {
     log({
       level: "error",
       event: "transfer_initiation_failed",
-      merchantTxRef: transaction.id,
+      merchantTxRef: transaction.nomba_tx_ref,
       vaultId: transaction.vault_id,
       error: message,
     });

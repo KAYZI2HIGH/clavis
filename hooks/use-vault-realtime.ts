@@ -127,6 +127,21 @@ export function useVaultRealtime(vaultId: string | null) {
         }
       )
 
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "reconciliation_logs",
+          filter: `vault_id=eq.${vaultId}`,
+        },
+        () => {
+          qc.invalidateQueries({ 
+            queryKey: ["reconciliation", vaultId] 
+          });
+        }
+      )
+
       .subscribe((status) => {
         if (status === "SUBSCRIBED") {
           console.log(`[realtime] subscribed to vault:${vaultId}`);

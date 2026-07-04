@@ -11,6 +11,8 @@ import { RequestPayoutSheet } from "./request-payout-sheet";
 import { SettingsDialog } from "./settings-dialog";
 import { TxDetailSheet } from "./tx-detail-sheet";
 
+import { ReconciliationBanner } from "@/components/vault/reconciliation-banner";
+
 export function VaultDashboard() {
   const vault = useActiveVault();
   useVaultRealtime(vault?.id ?? null);
@@ -23,6 +25,7 @@ export function VaultDashboard() {
 
   return (
     <div className="min-h-screen bg-paper grain">
+      <ReconciliationBanner vaultId={vault.id} />
       <VaultHeader vault={vault} onSettings={() => setSettingsOpen(true)} />
 
       <main className="max-w-6xl mx-auto px-8 pb-24">
