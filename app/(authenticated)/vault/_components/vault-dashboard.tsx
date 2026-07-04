@@ -34,7 +34,6 @@ export function VaultDashboard() {
           <button
             className="btn-mech btn-mech-primary"
             onClick={() => setRequestOpen(true)}
-            disabled={vault.balanceKobo === 0}
           >
             Request Payout
           </button>

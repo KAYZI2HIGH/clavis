@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { requestPayoutSchema, type RequestPayoutSchema } from "@/lib/schemas";
 import { useRecipientLookupQuery } from "@/hooks/use-recipient-lookup-query";
+import { useRequestPayoutMutation } from "@/hooks/use-request-payout-mutation";
 import {
   Sheet,
   SheetContent,
@@ -14,7 +15,6 @@ import {
 } from "@/components/ui/sheet";
 import { Field } from "@/components/shared/field";
 import { InputStyles } from "@/components/shared/input-styles";
-import { useVault } from "@/hooks/use-vault";
 import { formatNGN } from "@/lib/format";
 import { getBankName, NIGERIAN_BANKS } from "@/lib/nigerian-banks";
 import type { Vault } from "@/lib/types";
@@ -29,7 +29,7 @@ export function RequestPayoutSheet({
   open: boolean;
   onOpenChange: (b: boolean) => void;
 }) {
-  const { requestPayout } = useVault();
+  const requestPayoutMutation = useRequestPayoutMutation(vault.id);
 
   const {
     register,
@@ -37,7 +37,7 @@ export function RequestPayoutSheet({
     watch,
     reset,
     setValue,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<RequestPayoutSchema>({
     resolver: zodResolver(requestPayoutSchema),
     defaultValues: {
@@ -73,9 +73,10 @@ export function RequestPayoutSheet({
     amountKobo > 0 &&
     amountKobo <= vault.balanceKobo;
 
-  const onSubmit = (data: RequestPayoutSchema) => {
+  const onSubmit = async (data: RequestPayoutSchema) => {
     if (!valid || !resolvedAccountName) return;
-    requestPayout({
+
+    await requestPayoutMutation.mutateAsync({
       recipientName: resolvedAccountName,
       recipientAccount: data.recipientAccount,
       recipientBankCode: data.recipientBankCode,
@@ -83,6 +84,7 @@ export function RequestPayoutSheet({
       amountKobo,
       memo: (data.memo ?? "").trim(),
     });
+
     onOpenChange(false);
   };
 
@@ -139,21 +141,20 @@ export function RequestPayoutSheet({
               {errors.recipientAccount && (
                 <p className="text-xs text-crimson mt-1">{errors.recipientAccount.message}</p>
               )}
-            </Field>
-
-            <Field label="Recipient name">
-              <div className="min-h-[38px] border hairline-strong bg-secondary/30 px-3 flex items-center text-sm">
-                {lookupLoading ? (
-                  <div className="flex items-center gap-2 text-ink-muted">
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                    <span>Verifying account details...</span>
-                  </div>
-                ) : resolvedAccountName ? (
-                  <span className="text-ink font-medium tracking-wide">{resolvedAccountName}</span>
-                ) : (
-                  <span className="text-ink-faint italic">Enter account and select bank</span>
-                )}
-              </div>
+              {lookupLoading && (
+                <div className="flex items-center gap-1.5 text-ink-muted mt-1.5">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <span className="text-xs">Verifying account...</span>
+                </div>
+              )}
+              {resolvedAccountName && !lookupLoading && (
+                <p className="text-xs text-ink-muted mt-1.5">
+                  Recipient:{" "}
+                  <span className="text-ink font-medium">
+                    {resolvedAccountName}
+                  </span>
+                </p>
+              )}
             </Field>
 
             <Field
@@ -209,10 +210,10 @@ export function RequestPayoutSheet({
             </button>
             <button
               type="submit"
-              disabled={!valid || isSubmitting}
+              disabled={!valid || requestPayoutMutation.isPending}
               className="btn-mech btn-mech-primary disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center min-w-[130px]"
             >
-              {isSubmitting ? (
+              {requestPayoutMutation.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 "Request Payout"

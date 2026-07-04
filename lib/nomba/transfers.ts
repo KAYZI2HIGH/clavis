@@ -18,6 +18,12 @@ export type RecipientLookupResult = {
   bankCode: string;
 };
 
+type NombaLookupEnvelope = {
+  code: string;
+  description: string;
+  data: RecipientLookupResponse;
+};
+
 export async function lookupRecipient({
   accountNumber,
   bankCode,
@@ -27,7 +33,7 @@ export async function lookupRecipient({
 }): Promise<RecipientLookupResult> {
   const merchantTxRef = crypto.randomUUID();
 
-  const data = await nombaFetch<RecipientLookupResponse>(
+  const response = await nombaFetch<NombaLookupEnvelope>(
     "/transfers/bank/lookup",
     {
       method: "POST",
@@ -36,14 +42,20 @@ export async function lookupRecipient({
     },
   );
 
+  const data = response.data;
+
   log({
     level: "info",
     event: "recipient_lookup",
     merchantTxRef,
     accountNumber,
     bankCode,
-    resolvedName: data.accountName,
+    resolvedName: data?.accountName,
   });
+
+  if (!data?.accountName) {
+    throw new Error(response.description || "Recipient account details not found");
+  }
 
   return {
     accountName: data.accountName,

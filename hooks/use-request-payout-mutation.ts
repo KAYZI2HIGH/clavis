@@ -9,7 +9,6 @@ export type RequestPayoutPayload = {
   recipientBankName: string;
   amountKobo: number;
   memo: string;
-  requestedBy: string;
 };
 
 export function useRequestPayoutMutation(vaultId: string) {
