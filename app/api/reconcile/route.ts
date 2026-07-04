@@ -12,7 +12,7 @@ export async function GET(request: Request) {
   // Fetch all vaults that have a Nomba virtual account
   const { data: vaults } = await getServiceClient()
     .from("vaults")
-    .select("id, name, balance_kobo, quorum")
+    .select("id, name, balance_kobo, quorum, nomba_virtual_account_number")
     .not("nomba_virtual_account_number", "is", null);
 
   if (!vaults || vaults.length === 0) {
@@ -22,14 +22,14 @@ export async function GET(request: Request) {
   const results = [];
 
   for (const vault of vaults) {
-    const result = await reconcileVault(vault.id);
+    const result = await reconcileVault(vault.id, vault.nomba_virtual_account_number || "");
     results.push(result);
   }
 
   return Response.json({ reconciled: results });
 }
 
-async function reconcileVault(vaultId: string) {
+async function reconcileVault(vaultId: string, virtualAccount: string) {
   const resolved: string[] = [];
   const orphansCredited: string[] = [];
   const critical: string[] = [];
@@ -40,11 +40,11 @@ async function reconcileVault(vaultId: string) {
     Date.now() - 24 * 60 * 60 * 1000
   ).toISOString();
 
-  // Fetch transactions from Nomba for this period
+  // Fetch transactions from Nomba for this period scoping it to our account
   let nombaTransactions: any[] = [];
   try {
     const res = await nombaFetch<any>(
-      `/v1/transactions?dateFrom=${dateFrom}&dateTo=${dateTo}`,
+      `/v1/transactions/accounts?dateFrom=${dateFrom}&dateTo=${dateTo}`,
       { method: "GET", merchantTxRef: `recon-${vaultId}` }
     );
     nombaTransactions = res?.data?.transactions ?? [];
