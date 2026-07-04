@@ -5,6 +5,7 @@ import { TransactionsList } from "@/components/vault/transactions-list";
 import { VaultFooter } from "@/components/vault/vault-footer";
 import { VaultHeader } from "@/components/vault/vault-header";
 import { useActiveVault } from "@/hooks/use-vault";
+import { useVaultRealtime } from "@/hooks/use-vault-realtime";
 import { ApprovalDialog } from "./approval-dialog";
 import { RequestPayoutSheet } from "./request-payout-sheet";
 import { SettingsDialog } from "./settings-dialog";
@@ -12,6 +13,7 @@ import { TxDetailSheet } from "./tx-detail-sheet";
 
 export function VaultDashboard() {
   const vault = useActiveVault();
+  useVaultRealtime(vault?.id ?? null);
   const [requestOpen, setRequestOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);

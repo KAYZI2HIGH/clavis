@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { KeyIcon } from "@/components/shared/key-icon";
 import { useVault } from "@/hooks/use-vault";
 import { CreateStepShell, RequireDraft } from "../_components/create-step-shell";
+import { Loader2 } from "lucide-react";
 
 type LiveStakeholder = { id: string; name: string; initials: string; isFounder?: boolean; email?: string };
 
@@ -129,11 +130,18 @@ function CreateReviewContent() {
       </div>
       <div className="mt-12 flex justify-end">
         <button
-          className="btn-mech btn-mech-primary disabled:opacity-40"
+          className="btn-mech btn-mech-primary disabled:opacity-40 flex items-center gap-2"
           onClick={doFound}
           disabled={founding}
         >
-          {founding ? "Cutting keys…" : "Found the Vault"}
+          {founding ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Cutting keys…</span>
+            </>
+          ) : (
+            "Found the Vault"
+          )}
         </button>
       </div>
     </CreateStepShell>

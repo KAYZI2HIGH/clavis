@@ -10,6 +10,9 @@ import type { Vault } from "@/lib/types";
 import IdentitySwitcher from "./identity-switcher";
 import { VaultSwitcher } from "./vault-switcher";
 
+import { useRetryVAMutation } from "@/hooks/use-retry-va-mutation";
+import { Loader2 } from "lucide-react";
+
 export function VaultHeader({
   vault,
   onSettings,
@@ -19,36 +22,22 @@ export function VaultHeader({
 }) {
   const router = useRouter();
   const [copied, setCopied] = useState(false);
-  const [retrying, setRetrying] = useState(false);
-  const { state, updateVaultFundingAccount, reloadVaults } = useVault();
+  const { state, reloadVaults } = useVault();
   const current = state.currentPartner;
+
+  const retryVA = useRetryVAMutation(vault.id);
 
   // Determine if the current partner is the founder
   const isFounder = vault.stakeholders.find((s) => s.id === current)?.isFounder ?? false;
 
   const handleRetryVA = async () => {
-    setRetrying(true);
     try {
-      const res = await fetch(`/api/vaults/${vault.id}/fund`, {
-        method: "POST",
-      });
-
-      if (!res.ok) {
-        const payload = await res.json().catch(() => ({}));
-        toast.error(payload.error || "Failed to set up account. Try again.");
-        return;
-      }
-
-      const { accountNumber, bankName } = await res.json();
-      updateVaultFundingAccount(vault.id, accountNumber, bankName);
+      await retryVA.mutateAsync();
       // Optimistically reload the vaults data globally to keep lists synced
       await reloadVaults().catch(() => {});
       router.refresh();
-      toast.success("Funding account set up successfully.");
     } catch {
-      toast.error("Something went wrong. Please try again.");
-    } finally {
-      setRetrying(false);
+      // Toast notifications are already handled inside the hook onError
     }
   };
 
@@ -176,11 +165,15 @@ export function VaultHeader({
                   Account details unavailable.
                 </p>
                 <button
-                  className="btn-mech btn-mech-ghost text-xs mt-2"
+                  className="btn-mech btn-mech-ghost text-xs mt-2 flex items-center justify-center gap-1.5"
                   onClick={handleRetryVA}
-                  disabled={retrying}
+                  disabled={retryVA.isPending}
                 >
-                  {retrying ? "Retrying..." : "Retry account setup"}
+                  {retryVA.isPending ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    "Retry account setup"
+                  )}
                 </button>
               </div>
             ) : (

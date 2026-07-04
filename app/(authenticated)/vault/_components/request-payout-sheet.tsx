@@ -1,6 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { requestPayoutSchema, type RequestPayoutSchema } from "@/lib/schemas";
+import { useRecipientLookupQuery } from "@/hooks/use-recipient-lookup-query";
 import {
   Sheet,
   SheetContent,
@@ -14,6 +18,7 @@ import { useVault } from "@/hooks/use-vault";
 import { formatNGN } from "@/lib/format";
 import { getBankName, NIGERIAN_BANKS } from "@/lib/nigerian-banks";
 import type { Vault } from "@/lib/types";
+import { Loader2 } from "lucide-react";
 
 export function RequestPayoutSheet({
   vault,
@@ -25,39 +30,58 @@ export function RequestPayoutSheet({
   onOpenChange: (b: boolean) => void;
 }) {
   const { requestPayout } = useVault();
-  const [recipientName, setName] = useState("");
-  const [recipientAccount, setAccount] = useState("");
-  const [bankCode, setBankCode] = useState("");
-  const [amountStr, setAmount] = useState("");
-  const [memo, setMemo] = useState("");
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    reset,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm<RequestPayoutSchema>({
+    resolver: zodResolver(requestPayoutSchema),
+    defaultValues: {
+      recipientAccount: "",
+      recipientBankCode: "",
+      amount: undefined as any,
+      memo: "",
+    },
+  });
+
+  const recipientAccount = watch("recipientAccount");
+  const recipientBankCode = watch("recipientBankCode");
+  const amountVal = watch("amount");
+
+  const { data: lookupData, isLoading: lookupLoading } = useRecipientLookupQuery(
+    recipientAccount || "",
+    recipientBankCode || "",
+  );
 
   useEffect(() => {
     if (!open) {
-      setName("");
-      setAccount("");
-      setBankCode("");
-      setAmount("");
-      setMemo("");
+      reset();
     }
-  }, [open]);
+  }, [open, reset]);
 
-  const amountKobo = Math.round(parseFloat(amountStr || "0") * 100);
+  const amountKobo = Math.round((Number(amountVal) || 0) * 100);
+  const resolvedAccountName = lookupData?.accountName;
+
   const valid =
-    recipientName.trim() &&
-    recipientAccount.trim() &&
-    bankCode &&
+    resolvedAccountName &&
+    recipientAccount?.length === 10 &&
+    recipientBankCode &&
     amountKobo > 0 &&
     amountKobo <= vault.balanceKobo;
 
-  const submit = () => {
-    if (!valid) return;
+  const onSubmit = (data: RequestPayoutSchema) => {
+    if (!valid || !resolvedAccountName) return;
     requestPayout({
-      recipientName: recipientName.trim(),
-      recipientAccount: recipientAccount.trim(),
-      recipientBankCode: bankCode,
-      recipientBankName: getBankName(bankCode),
+      recipientName: resolvedAccountName,
+      recipientAccount: data.recipientAccount,
+      recipientBankCode: data.recipientBankCode,
+      recipientBankName: getBankName(data.recipientBankCode),
       amountKobo,
-      memo: memo.trim(),
+      memo: (data.memo ?? "").trim(),
     });
     onOpenChange(false);
   };
@@ -81,91 +105,121 @@ export function RequestPayoutSheet({
           </SheetDescription>
         </SheetHeader>
 
-        <div className="px-6 py-6 space-y-5">
-          <Field label="Recipient name">
-            <input
-              autoFocus
-              className="input-mech"
-              value={recipientName}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Vendor LLC"
-            />
-          </Field>
-          <Field label="Bank">
-            <select
-              className="input-mech"
-              value={bankCode}
-              onChange={(e) => setBankCode(e.target.value)}
-            >
-              <option value="">Select a bank</option>
-              {NIGERIAN_BANKS.map((bank) => (
-                <option key={bank.code} value={bank.code}>
-                  {bank.name}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Account number">
-            <input
-              className="input-mech mono"
-              value={recipientAccount}
-              onChange={(e) =>
-                setAccount(e.target.value.replace(/\D/g, "").slice(0, 10))
-              }
-              inputMode="numeric"
-              placeholder="0123456789"
-            />
-          </Field>
-          <Field
-            label="Amount"
-            hint={`Available ${formatNGN(vault.balanceKobo)}`}
-          >
-            <div className="flex items-center">
-              <span className="mono text-ink-faint px-3 border hairline-strong border-r-0 h-[38px] flex items-center">
-                ₦
-              </span>
-              <input
-                inputMode="decimal"
-                className="input-mech mono"
-                value={amountStr}
-                onChange={(e) =>
-                  setAmount(e.target.value.replace(/[^0-9.]/g, ""))
-                }
-                placeholder="0.00"
-                style={{ borderLeft: 0 }}
-              />
-            </div>
-            {amountKobo > vault.balanceKobo && (
-              <p className="text-xs text-crimson mt-1.5">
-                Amount exceeds vault balance.
-              </p>
-            )}
-          </Field>
-          <Field label="Memo" hint="Optional">
-            <input
-              className="input-mech"
-              value={memo}
-              onChange={(e) => setMemo(e.target.value)}
-              placeholder="Q4 retainer"
-            />
-          </Field>
-        </div>
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <div className="px-6 py-6 space-y-5">
+            <Field label="Bank">
+              <select
+                className="input-mech"
+                {...register("recipientBankCode")}
+              >
+                <option value="">Select a bank</option>
+                {NIGERIAN_BANKS.map((bank) => (
+                  <option key={bank.code} value={bank.code}>
+                    {bank.name}
+                  </option>
+                ))}
+              </select>
+              {errors.recipientBankCode && (
+                <p className="text-xs text-crimson mt-1">{errors.recipientBankCode.message}</p>
+              )}
+            </Field>
 
-        <div className="px-6 py-4 border-t hairline flex items-center justify-between bg-card">
-          <button
-            className="btn-mech btn-mech-ghost"
-            onClick={() => onOpenChange(false)}
-          >
-            Cancel
-          </button>
-          <button
-            disabled={!valid}
-            onClick={submit}
-            className="btn-mech btn-mech-primary disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            Request Payout
-          </button>
-        </div>
+            <Field label="Account number">
+              <input
+                className="input-mech mono"
+                inputMode="numeric"
+                placeholder="0123456789"
+                {...register("recipientAccount", {
+                  onChange: (e) => {
+                    const clean = e.target.value.replace(/\D/g, "").slice(0, 10);
+                    setValue("recipientAccount", clean);
+                  }
+                })}
+              />
+              {errors.recipientAccount && (
+                <p className="text-xs text-crimson mt-1">{errors.recipientAccount.message}</p>
+              )}
+            </Field>
+
+            <Field label="Recipient name">
+              <div className="min-h-[38px] border hairline-strong bg-secondary/30 px-3 flex items-center text-sm">
+                {lookupLoading ? (
+                  <div className="flex items-center gap-2 text-ink-muted">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    <span>Verifying account details...</span>
+                  </div>
+                ) : resolvedAccountName ? (
+                  <span className="text-ink font-medium tracking-wide">{resolvedAccountName}</span>
+                ) : (
+                  <span className="text-ink-faint italic">Enter account and select bank</span>
+                )}
+              </div>
+            </Field>
+
+            <Field
+              label="Amount"
+              hint={`Available ${formatNGN(vault.balanceKobo)}`}
+            >
+              <div className="flex items-center">
+                <span className="mono text-ink-faint px-3 border hairline-strong border-r-0 h-[38px] flex items-center">
+                  ₦
+                </span>
+                <input
+                  inputMode="decimal"
+                  className="input-mech mono"
+                  placeholder="0.00"
+                  style={{ borderLeft: 0 }}
+                  {...register("amount", {
+                    valueAsNumber: true,
+                    onChange: (e) => {
+                      const clean = e.target.value.replace(/[^0-9.]/g, "");
+                      setValue("amount", clean ? parseFloat(clean) : undefined as any);
+                    }
+                  })}
+                />
+              </div>
+              {errors.amount && (
+                <p className="text-xs text-crimson mt-1">{errors.amount.message}</p>
+              )}
+              {amountKobo > vault.balanceKobo && (
+                <p className="text-xs text-crimson mt-1.5">
+                  Amount exceeds vault balance.
+                </p>
+              )}
+            </Field>
+            <Field label="Memo" hint="Optional">
+              <input
+                className="input-mech"
+                placeholder="Q4 retainer"
+                {...register("memo")}
+              />
+              {errors.memo && (
+                <p className="text-xs text-crimson mt-1">{errors.memo.message}</p>
+              )}
+            </Field>
+          </div>
+
+          <div className="px-6 py-4 border-t hairline flex items-center justify-between bg-card">
+            <button
+              type="button"
+              className="btn-mech btn-mech-ghost"
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={!valid || isSubmitting}
+              className="btn-mech btn-mech-primary disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center min-w-[130px]"
+            >
+              {isSubmitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Request Payout"
+              )}
+            </button>
+          </div>
+        </form>
         <InputStyles />
       </SheetContent>
     </Sheet>
