@@ -58,25 +58,40 @@ export async function POST(request: Request) {
   });
 
   if (vaultError) {
-    log({ level: "error", event: "vault_draft_insert_failed", vaultId, error: vaultError.message });
+    log({
+      level: "error",
+      event: "vault_draft_insert_failed",
+      vaultId,
+      error: vaultError.message,
+    });
     return Response.json({ error: "Failed to create vault" }, { status: 500 });
   }
 
   // 2. Insert founder stakeholder
-  const { error: shError } = await getServiceClient().from("stakeholders").insert({
-    id: founderStakeholderId,
-    vault_id: vaultId,
-    name: founderName,
-    initials: founderInitials,
-    email: session.user.email ?? null,
-    phone: session.user.phone ?? null,
-    is_founder: true,
-    created_at: new Date().toISOString(),
-  });
+  const { error: shError } = await getServiceClient()
+    .from("stakeholders")
+    .insert({
+      id: founderStakeholderId,
+      vault_id: vaultId,
+      name: founderName,
+      initials: founderInitials,
+      email: session.user.email ?? null,
+      phone: session.user.phone ?? null,
+      is_founder: true,
+      created_at: new Date().toISOString(),
+    });
 
   if (shError) {
-    log({ level: "error", event: "vault_draft_founder_failed", vaultId, error: shError.message });
-    return Response.json({ error: "Failed to register founder" }, { status: 500 });
+    log({
+      level: "error",
+      event: "vault_draft_founder_failed",
+      vaultId,
+      error: shError.message,
+    });
+    return Response.json(
+      { error: "Failed to register founder" },
+      { status: 500 },
+    );
   }
 
   // 3. Link founder_id back to vault (circular FK now resolved)
@@ -87,15 +102,17 @@ export async function POST(request: Request) {
 
   // 4. Create link_invitations record if method is link
   if (method === "link") {
-    await getServiceClient().from("link_invitations").insert({
-      id: makeId("li"),
-      vault_id: vaultId,
-      token: linkToken,
-      placeholder: "Pending",
-      invited_by: founderStakeholderId,
-      status: "pending",
-      created_at: new Date().toISOString(),
-    });
+    await getServiceClient()
+      .from("link_invitations")
+      .insert({
+        id: makeId("li"),
+        vault_id: vaultId,
+        token: linkToken,
+        placeholder: "Pending",
+        invited_by: founderStakeholderId,
+        status: "pending",
+        created_at: new Date().toISOString(),
+      });
   }
 
   // 5. Kick off Nomba virtual account creation in background (don't block response)
@@ -146,11 +163,20 @@ export async function GET() {
     .or(orCondition);
 
   if (shError) {
-    log({ level: "error", event: "vaults_fetch_stakeholders_failed", error: shError.message });
-    return Response.json({ error: "Failed to fetch user vaults metadata" }, { status: 500 });
+    log({
+      level: "error",
+      event: "vaults_fetch_stakeholders_failed",
+      error: shError.message,
+    });
+    return Response.json(
+      { error: "Failed to fetch user vaults metadata" },
+      { status: 500 },
+    );
   }
 
-  const vaultIds = Array.from(new Set(shRows?.map((row) => row.vault_id) ?? []));
+  const vaultIds = Array.from(
+    new Set(shRows?.map((row) => row.vault_id) ?? []),
+  );
   if (vaultIds.length === 0) {
     return Response.json({ vaults: [] });
   }
@@ -168,20 +194,39 @@ export async function GET() {
       .select("*")
       .in("id", vaultIds)
       .order("updated_at", { ascending: false }), // Return both active and draft vaults sorted by recently added/updated first
-    getServiceClient().from("stakeholders").select("*").in("vault_id", vaultIds),
+    getServiceClient()
+      .from("stakeholders")
+      .select("*")
+      .in("vault_id", vaultIds),
     getServiceClient()
       .from("transactions")
       .select("*")
       .in("vault_id", vaultIds)
       .order("requested_at", { ascending: false }),
-    getServiceClient().from("link_invitations").select("*").in("vault_id", vaultIds),
-    getServiceClient().from("email_invites").select("*").in("vault_id", vaultIds),
-    getServiceClient().from("pending_joins").select("*").in("vault_id", vaultIds),
+    getServiceClient()
+      .from("link_invitations")
+      .select("*")
+      .in("vault_id", vaultIds),
+    getServiceClient()
+      .from("email_invites")
+      .select("*")
+      .in("vault_id", vaultIds),
+    getServiceClient()
+      .from("pending_joins")
+      .select("*")
+      .in("vault_id", vaultIds),
   ]);
 
   if (vaultsResult.error) {
-    log({ level: "error", event: "vaults_fetch_failed", error: vaultsResult.error.message });
-    return Response.json({ error: "Failed to fetch user vaults" }, { status: 500 });
+    log({
+      level: "error",
+      event: "vaults_fetch_failed",
+      error: vaultsResult.error.message,
+    });
+    return Response.json(
+      { error: "Failed to fetch user vaults" },
+      { status: 500 },
+    );
   }
 
   const vaults = vaultsResult.data ?? [];
@@ -239,7 +284,8 @@ export async function GET() {
           status: tx.status as "pending" | "sealed" | "settled" | "declined",
           requiredQuorum: tx.required_quorum,
           sealedAt: tx.sealed_at ? new Date(tx.sealed_at).getTime() : undefined,
-          settledAt: tx.settled_at ? new Date(tx.settled_at).getTime() : undefined,
+          settledAt:
+            tx.settled_at ? new Date(tx.settled_at).getTime() : undefined,
           declinedBy: tx.declined_by ?? undefined,
           declineReason: tx.decline_reason ?? undefined,
         };

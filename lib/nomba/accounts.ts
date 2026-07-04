@@ -33,13 +33,20 @@ export async function createVirtualAccount({
 }): Promise<CreateVirtualAccountResult> {
   const accountRef = crypto.randomUUID();
 
+  const sanitizedAccountName = vaultName
+    .replace(/[^a-zA-Z0-9 ]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const finalAccountName = sanitizedAccountName || "Clavis Vault";
+
   try {
     const data = await nombaFetch<VirtualAccountResponse>("/accounts/virtual", {
       method: "POST",
       merchantTxRef: accountRef,
       body: {
         accountRef,
-        accountName: vaultName,
+        accountName: finalAccountName,
       },
     });
 
