@@ -47,6 +47,14 @@ async function reconcileVault(vaultId: string, virtualAccount: string) {
       { method: "GET", merchantTxRef: `recon-${vaultId}` }
     );
     
+    // Log the raw response for debugging purposes
+    log({
+      level: "info",
+      event: "reconciliation_raw_nomba_response",
+      vaultId,
+      rawResponse: JSON.stringify(res),
+    });
+    
     // Safely check if data itself is the transactions array, or if it is nested inside data.transactions
     if (Array.isArray(res?.data)) {
       nombaTransactions = res.data;
