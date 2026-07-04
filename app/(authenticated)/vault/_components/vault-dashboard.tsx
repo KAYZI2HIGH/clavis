@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { EmptyVault } from "@/components/vault/empty-vault";
 import { TransactionsList } from "@/components/vault/transactions-list";
 import { VaultFooter } from "@/components/vault/vault-footer";
 import { VaultHeader } from "@/components/vault/vault-header";
@@ -20,40 +19,31 @@ export function VaultDashboard() {
 
   if (!vault) return null;
 
-  const showEmpty =
-    vault.balanceKobo === 0 && vault.transactions.length === 0;
-
   return (
     <div className="min-h-screen bg-paper grain">
       <VaultHeader vault={vault} onSettings={() => setSettingsOpen(true)} />
 
       <main className="max-w-6xl mx-auto px-8 pb-24">
-        {showEmpty ? (
-          <EmptyVault vault={vault} />
-        ) : (
-          <>
-            <div className="flex items-end justify-between mt-10 mb-5">
-              <div>
-                <p className="engraved">Ledger</p>
-                <p className="serif text-2xl text-ink mt-1">Transactions</p>
-              </div>
-              <button
-                className="btn-mech btn-mech-primary"
-                onClick={() => setRequestOpen(true)}
-                disabled={vault.balanceKobo === 0}
-              >
-                Request Payout
-              </button>
-            </div>
+        <div className="flex items-end justify-between mt-10 mb-5">
+          <div>
+            <p className="engraved">Ledger</p>
+            <p className="serif text-2xl text-ink mt-1">Transactions</p>
+          </div>
+          <button
+            className="btn-mech btn-mech-primary"
+            onClick={() => setRequestOpen(true)}
+            disabled={vault.balanceKobo === 0}
+          >
+            Request Payout
+          </button>
+        </div>
 
-            <div className="border hairline-strong bg-card">
-              <TransactionsList
-                vault={vault}
-                onOpen={(id) => setDetailId(id)}
-              />
-            </div>
-          </>
-        )}
+        <div className="border hairline-strong bg-card">
+          <TransactionsList
+            vault={vault}
+            onOpen={(id) => setDetailId(id)}
+          />
+        </div>
       </main>
 
       <RequestPayoutSheet

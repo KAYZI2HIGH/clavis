@@ -1,14 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { KeyIcon } from "@/components/shared/key-icon";
 import { useVault } from "@/hooks/use-vault";
-import {
-  CreateStepShell,
-  RequireDraft,
-} from "../_components/create-step-shell";
+import { CreateStepShell, RequireDraft } from "../_components/create-step-shell";
+
+type LiveStakeholder = { id: string; name: string; initials: string; isFounder?: boolean; email?: string };
 
 function CreateReviewContent() {
   const { state, foundVault } = useVault();
@@ -16,13 +15,30 @@ function CreateReviewContent() {
   const draft = state.draft!;
   const [founding, setFounding] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [liveStakeholders, setLiveStakeholders] = useState<LiveStakeholder[]>(draft.stakeholders);
 
-  const total = draft.stakeholders.length;
-  const q = Math.min(draft.quorum, total);
+  // Fetch real stakeholder list for the animation
+  useEffect(() => {
+    if (!draft.vaultId) return;
+    fetch(`/api/vaults/${draft.vaultId}/stakeholders`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.stakeholders?.length) setLiveStakeholders(d.stakeholders);
+      })
+      .catch(() => {});
+  }, [draft.vaultId]);
+
+  const total = liveStakeholders.length;
+  const q = Math.min(draft.quorum, Math.max(total, 1));
 
   const doFound = () => {
+    if (!draft.vaultId) {
+      toast.error("Vault ID missing. Please restart the creation flow.");
+      return;
+    }
     setFounding(true);
     let i = 0;
+
     const step = () => {
       i += 1;
       setProgress(i);
@@ -31,45 +47,47 @@ function CreateReviewContent() {
       } else {
         setTimeout(async () => {
           try {
-            const res = await fetch("/api/vaults", {
-              method: "POST",
+            // Read email invites staged on the invite step
+            let emailStakeholders: { name: string; email: string; initials: string }[] = [];
+            try {
+              const raw = sessionStorage.getItem("draft_email_invites");
+              if (raw) emailStakeholders = JSON.parse(raw);
+            } catch { /* ignore */ }
+
+            const res = await fetch(`/api/vaults/${draft.vaultId}`, {
+              method: "PATCH",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                name: draft.name,
                 quorum: draft.quorum,
-                method: draft.method,
-                stakeholders: draft.stakeholders,
-                linkToken: draft.linkToken,
+                emailStakeholders: draft.method === "email" ? emailStakeholders : [],
               }),
             });
 
             if (!res.ok) {
               const payload = await res.json().catch(() => ({}));
-              const errorMsg = payload.error ?? "Failed to create vault. Please try again.";
-              toast.error(errorMsg);
+              toast.error(payload.error ?? "Failed to found vault. Please try again.");
               setFounding(false);
               return;
             }
 
             const vault = await res.json();
+            sessionStorage.removeItem("draft_email_invites");
             foundVault(vault);
-            toast.success("Vault created successfully");
+            toast.success("Vault founded successfully");
             router.replace("/vault");
-          } catch (err) {
-            toast.error("Failed to create vault. Please try again.");
+          } catch {
+            toast.error("Failed to found vault. Please try again.");
             setFounding(false);
           }
         }, 500);
       }
     };
+
     setTimeout(step, 200);
   };
 
   return (
-    <CreateStepShell
-      step={4}
-      onBack={() => router.push("/vault/create/invite")}
-    >
+    <CreateStepShell step={4} onBack={() => router.push("/vault/create/quorum")}>
       <p className="engraved">Review</p>
       <h1 className="serif text-3xl text-ink mt-2 leading-tight">
         {draft.name || "Untitled Vault"}
@@ -82,7 +100,7 @@ function CreateReviewContent() {
           <p className="engraved">Stakeholders</p>
         </div>
         <div className="divide-y hairline">
-          {draft.stakeholders.map((sh, i) => (
+          {liveStakeholders.map((sh, i) => (
             <div key={sh.id} className="flex items-center gap-3 px-5 py-3">
               <div
                 className="w-7 h-7 border hairline-strong flex items-center justify-center mono text-[10px] text-ink"
@@ -97,18 +115,13 @@ function CreateReviewContent() {
                     <span className="engraved text-brass-deep ml-1">You</span>
                   )}
                 </p>
-                {sh.email && (
-                  <p className="engraved text-ink-faint">{sh.email}</p>
-                )}
+                {sh.email && <p className="engraved text-ink-faint">{sh.email}</p>}
               </div>
               <div
                 className="key-anim"
                 style={{ opacity: founding ? (i < progress ? 1 : 0.3) : 0.5 }}
               >
-                <KeyIcon
-                  filled={founding ? i < progress : false}
-                  outlined={!founding}
-                />
+                <KeyIcon filled={founding ? i < progress : false} outlined={!founding} />
               </div>
             </div>
           ))}

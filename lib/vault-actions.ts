@@ -23,11 +23,18 @@ export type VaultAction =
   | { type: "SET_ACTOR"; payload: { partnerId: string } }
   | { type: "OPEN_VAULT"; payload: { vaultId: string } }
   | { type: "LEAVE_VAULT" }
+  | { type: "REMOVE_VAULT"; payload: { vaultId: string } }
+  | {
+      type: "UPDATE_VAULT_FUNDING_ACCOUNT";
+      payload: { vaultId: string; accountNumber: string; bankName: string };
+    }
   | { type: "START_DRAFT"; payload: { founderName: string } }
   | { type: "SET_DRAFT_NAME"; payload: { name: string } }
   | { type: "SET_DRAFT_QUORUM"; payload: { quorum: number } }
   | { type: "SET_DRAFT_METHOD"; payload: { method: "link" | "email" } }
   | { type: "SET_DRAFT_LINK_TOKEN"; payload: { token: string } }
+  | { type: "SET_DRAFT_VAULT_ID"; payload: { vaultId: string; linkToken: string } }
+  | { type: "RESUME_DRAFT"; payload: { vault: Vault } }
   | {
       type: "ADD_DRAFT_STAKEHOLDER";
       payload: { name: string; email: string };
@@ -142,6 +149,7 @@ export function buildVaultFromDraft(draft: Draft): Vault {
     id: vaultId,
     name: draft.name.trim() || "Untitled Vault",
     quorum,
+    status: "active" as const,
     stakeholders,
     youId: founder.id,
     founderId: founder.id,
@@ -195,6 +203,31 @@ export function vaultReducer(
     case "LEAVE_VAULT":
       return { ...state, activeVaultId: null, currentPartner: "" };
 
+    case "REMOVE_VAULT": {
+      const removedActive = state.activeVaultId === action.payload.vaultId;
+      return {
+        ...state,
+        vaults: state.vaults.filter((v) => v.id !== action.payload.vaultId),
+        activeVaultId: removedActive ? null : state.activeVaultId,
+        currentPartner: removedActive ? "" : state.currentPartner,
+      };
+    }
+
+    case "UPDATE_VAULT_FUNDING_ACCOUNT": {
+      return {
+        ...state,
+        vaults: state.vaults.map((v) =>
+          v.id === action.payload.vaultId
+            ? {
+                ...v,
+                fundingAccount: action.payload.accountNumber,
+                nombaVirtualAccountBank: action.payload.bankName,
+              }
+            : v
+        ),
+      };
+    }
+
     case "START_DRAFT": {
       const name = action.payload.founderName || "You";
       const founder: DraftStakeholder = {
@@ -239,6 +272,49 @@ export function vaultReducer(
           }
         : state;
 
+    case "SET_DRAFT_VAULT_ID":
+      return state.draft
+        ? {
+            ...state,
+            draft: {
+              ...state.draft,
+              vaultId: action.payload.vaultId,
+              linkToken: action.payload.linkToken,
+            },
+          }
+        : state;
+
+    case "RESUME_DRAFT": {
+      const v = action.payload.vault;
+      const founder = v.stakeholders.find((s) => s.isFounder) || {
+        id: makeId("sh"),
+        name: "You",
+        initials: "Y",
+        isFounder: true,
+      };
+      // Determine invite method from database state
+      const method = v.emailInvites.length > 0 ? "email" : "link";
+      const linkToken = v.linkInvitations[0]?.token || makeLinkToken();
+
+      return {
+        ...state,
+        draft: {
+          name: v.name,
+          quorum: v.quorum || 2,
+          method,
+          stakeholders: v.stakeholders.map((s) => ({
+            id: s.id,
+            name: s.name,
+            email: s.email,
+            initials: s.initials,
+            isFounder: s.isFounder,
+          })),
+          linkToken,
+          vaultId: v.id,
+        },
+      };
+    }
+
     case "ADD_DRAFT_STAKEHOLDER": {
       if (!state.draft) return state;
       const { name, email } = action.payload;
@@ -272,9 +348,11 @@ export function vaultReducer(
 
     case "FOUND_VAULT": {
       const vault = action.payload.vault;
+      // Filter out the draft version of this vault if it exists in state.vaults
+      const filteredVaults = state.vaults.filter((v) => v.id !== vault.id);
       return {
         ...state,
-        vaults: [...state.vaults, vault],
+        vaults: [...filteredVaults, vault],
         activeVaultId: vault.id,
         currentPartner: vault.youId,
         draft: null,

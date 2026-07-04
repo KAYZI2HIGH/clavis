@@ -76,6 +76,8 @@ export type Vault = {
   linkInvitations: LinkInvitation[];
   pendingJoins: PendingJoin[];
   emailInvites: EmailInvite[];
+  status: "draft" | "active";
+  nombaVirtualAccountBank?: string;
 };
 
 export type DraftStakeholder = {
@@ -92,6 +94,8 @@ export type Draft = {
   method: "link" | "email";
   stakeholders: DraftStakeholder[];
   linkToken?: string;
+  /** Set after the vault is eagerly created in the DB at the name step */
+  vaultId?: string;
 };
 
 export type VaultAppState = {

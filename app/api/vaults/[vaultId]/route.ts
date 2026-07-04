@@ -1,0 +1,173 @@
+import { auth } from "@/auth";
+import { getServiceClient } from "@/lib/supabase/service";
+import { createVirtualAccount } from "@/lib/nomba/accounts";
+import { log } from "@/lib/logger";
+import { makeId } from "@/lib/vault-utils";
+
+export const runtime = "nodejs";
+
+/**
+ * PATCH /api/vaults/[vaultId]
+ * "Found the vault" — transitions a draft vault to active.
+ * Body: { quorum: number, emailStakeholders?: {name,email,initials}[] }
+ */
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ vaultId: string }> },
+) {
+  const session = await auth();
+  if (!session?.user) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { vaultId } = await params;
+
+  let body: {
+    quorum?: number;
+    emailStakeholders?: { name: string; email: string; initials: string }[];
+  };
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  const quorum = Number(body.quorum);
+  if (isNaN(quorum) || quorum < 1) {
+    return Response.json({ error: "Valid quorum is required" }, { status: 400 });
+  }
+
+  const email = session.user.email;
+  const phone = session.user.phone;
+
+  // Verify caller is the founder of this vault
+  const { data: founderRow, error: founderErr } = await getServiceClient()
+    .from("stakeholders")
+    .select("id, vault_id")
+    .eq("vault_id", vaultId)
+    .eq("is_founder", true)
+    .or(
+      [email ? `email.eq.${email}` : null, phone ? `phone.eq.${phone}` : null]
+        .filter(Boolean)
+        .join(","),
+    )
+    .single();
+
+  if (founderErr || !founderRow) {
+    return Response.json({ error: "Vault not found or not authorized" }, { status: 403 });
+  }
+
+  const founderStakeholderId = founderRow.id;
+
+  // Write any pending email invites (method=email path)
+  const emailStakeholders = body.emailStakeholders ?? [];
+  for (const sh of emailStakeholders) {
+    await getServiceClient().from("email_invites").insert({
+      id: makeId("ei"),
+      vault_id: vaultId,
+      name: sh.name,
+      email: sh.email,
+      initials: sh.initials,
+      invited_by: founderStakeholderId,
+      status: "pending",
+      created_at: new Date().toISOString(),
+    });
+  }
+
+  // Flip vault to active with the chosen quorum
+  const { error: updateErr } = await getServiceClient()
+    .from("vaults")
+    .update({
+      status: "active",
+      quorum,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", vaultId);
+
+  if (updateErr) {
+    log({ level: "error", event: "vault_found_update_failed", vaultId, error: updateErr.message });
+    return Response.json({ error: "Failed to found vault" }, { status: 500 });
+  }
+
+  // Re-fetch vault to check Nomba VA status
+  const { data: vaultRow } = await getServiceClient()
+    .from("vaults")
+    .select("funding_account, name, nomba_virtual_account_number")
+    .eq("id", vaultId)
+    .single();
+
+  // If VA wasn't created during the draft phase, retry now
+  if (!vaultRow?.nomba_virtual_account_number) {
+    createVirtualAccount({ vaultId, vaultName: vaultRow?.name ?? "" }).catch((err) => {
+      log({
+        level: "error",
+        event: "vault_found_nomba_failed",
+        vaultId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    });
+  }
+
+  // Fetch full vault data to return
+  const [stakeholdersRes, linkInvitesRes, emailInvitesRes, pendingJoinsRes, vaultRes] =
+    await Promise.all([
+      getServiceClient().from("stakeholders").select("*").eq("vault_id", vaultId),
+      getServiceClient().from("link_invitations").select("*").eq("vault_id", vaultId),
+      getServiceClient().from("email_invites").select("*").eq("vault_id", vaultId),
+      getServiceClient().from("pending_joins").select("*").eq("vault_id", vaultId),
+      getServiceClient().from("vaults").select("*").eq("id", vaultId).single(),
+    ]);
+
+  const v = vaultRes.data!;
+  const stakeholders = (stakeholdersRes.data ?? []).map((sh) => ({
+    id: sh.id,
+    name: sh.name,
+    initials: sh.initials,
+    email: sh.email ?? undefined,
+    phone: sh.phone ?? undefined,
+    isFounder: sh.is_founder,
+  }));
+
+  const myStakeholder = stakeholders.find(
+    (sh) => (email && sh.email === email) || (phone && sh.phone === phone),
+  );
+
+  return Response.json({
+    id: v.id,
+    name: v.name,
+    quorum: v.quorum,
+    status: "active" as const,
+    stakeholders,
+    youId: myStakeholder?.id ?? founderStakeholderId,
+    founderId: v.founder_id ?? "",
+    balanceKobo: Number(v.balance_kobo),
+    fundingAccount: v.funding_account || v.nomba_virtual_account_number || "",
+    nombaVirtualAccountBank: v.nomba_virtual_account_bank || undefined,
+    transactions: [],
+    linkInvitations: (linkInvitesRes.data ?? []).map((li) => ({
+      id: li.id,
+      token: li.token,
+      placeholder: li.placeholder,
+      invitedBy: li.invited_by,
+      status: li.status as "pending" | "accepted" | "declined",
+      createdAt: new Date(li.created_at).getTime(),
+    })),
+    emailInvites: (emailInvitesRes.data ?? []).map((ei) => ({
+      id: ei.id,
+      name: ei.name,
+      email: ei.email,
+      initials: ei.initials,
+      invitedBy: ei.invited_by,
+      createdAt: new Date(ei.created_at).getTime(),
+      status: ei.status as "pending" | "accepted",
+    })),
+    pendingJoins: (pendingJoinsRes.data ?? []).map((pj) => ({
+      id: pj.id,
+      vaultId: pj.vault_id,
+      name: pj.name,
+      initials: pj.initials,
+      viaToken: pj.via_token,
+      requestedAt: new Date(pj.requested_at).getTime(),
+    })),
+  });
+}

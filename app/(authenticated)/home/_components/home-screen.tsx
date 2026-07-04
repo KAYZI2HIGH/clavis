@@ -1,19 +1,51 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { InputStyles } from "@/components/shared/input-styles";
 import { KeyIcon } from "@/components/shared/key-icon";
 import { Wordmark } from "@/components/shared/wordmark";
 import { useAuth } from "@/hooks/use-auth";
 import { useVault } from "@/hooks/use-vault";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export function HomeScreen() {
-  const { state, openVault, startDraft } = useVault();
+  const { state, openVault, startDraft, resumeDraft, removeVault, loading } = useVault();
   const { authedName, signOut } = useAuth();
   const router = useRouter();
   const [pasted, setPasted] = useState("");
+  const [hoveredVaultId, setHoveredVaultId] = useState<string | null>(null);
+  const [showActionsOnMobile, setShowActionsOnMobile] = useState(false);
+  const [pendingVaultAction, setPendingVaultAction] = useState<{
+    vaultId: string;
+    vaultName: string;
+    kind: "delete" | "leave";
+  } | null>(null);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(hover: none), (pointer: coarse)");
+    const update = () => setShowActionsOnMobile(mediaQuery.matches);
+    update();
+    mediaQuery.addEventListener("change", update);
+    return () => mediaQuery.removeEventListener("change", update);
+  }, []);
 
   const submitPaste = () => {
     const m =
@@ -36,6 +68,48 @@ export function HomeScreen() {
   const handleOpenVault = (id: string) => {
     openVault(id);
     router.push("/vault");
+  };
+
+  const deleteVault = (vaultId: string) => {
+    removeVault(vaultId);
+    toast.success("Vault deleted");
+  };
+
+  const leaveVault = (vaultId: string) => {
+    removeVault(vaultId);
+    toast.success("You have left the vault");
+  };
+
+  const confirmVaultAction = () => {
+    if (!pendingVaultAction) return;
+
+    if (pendingVaultAction.kind === "delete") {
+      deleteVault(pendingVaultAction.vaultId);
+    } else {
+      leaveVault(pendingVaultAction.vaultId);
+    }
+
+    setPendingVaultAction(null);
+  };
+
+  const isVaultFounder = (vaultId: string) =>
+    state.vaults.find((vault) => vault.id === vaultId)?.stakeholders.find(
+      (stakeholder) => stakeholder.id === state.vaults.find((vault) => vault.id === vaultId)?.youId,
+    )?.isFounder ?? false;
+
+  const activeVaults = state.vaults.filter((v) => v.status !== "draft");
+  const draftVaults = state.vaults.filter((v) => v.status === "draft");
+
+  const handleResumeDraft = (v: any) => {
+    resumeDraft(v);
+    // Determine the next step to resume to
+    if (v.stakeholders.length <= 1 && v.emailInvites.length === 0) {
+      router.push("/vault/create/invite");
+    } else if (v.quorum === null || v.quorum === 0) {
+      router.push("/vault/create/quorum");
+    } else {
+      router.push("/vault/create/review");
+    }
   };
 
   return (
@@ -61,18 +135,37 @@ export function HomeScreen() {
             Which vault would you like to open?
           </h1>
           <div className="mt-10">
-            {state.vaults.length === 0 ? (
+            {loading ? (
+              <div className="border hairline-strong bg-card px-6 py-12 flex flex-col items-center justify-center gap-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-ink"></div>
+                <p className="engraved text-xs text-ink-muted tracking-wider">Unlocking Keychain…</p>
+              </div>
+            ) : activeVaults.length === 0 ? (
               <div className="border hairline-strong bg-card px-6 py-8 text-center">
                 <p className="text-sm text-ink-muted">
-                  You don&apos;t hold a key to any vault yet.
+                  You don&apos;t hold a key to any active vault yet.
                 </p>
               </div>
             ) : (
               <div className="border hairline-strong bg-card divide-y hairline">
-                {state.vaults.map((v) => (
-                  <button
+                {activeVaults.map((v) => (
+                  <div
                     key={v.id}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => handleOpenVault(v.id)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        handleOpenVault(v.id);
+                      }
+                    }}
+                    onMouseEnter={() => setHoveredVaultId(v.id)}
+                    onMouseLeave={() =>
+                      setHoveredVaultId((current) =>
+                        current === v.id ? null : current,
+                      )
+                    }
                     className="w-full flex items-center justify-between px-6 py-5 text-left hover:bg-secondary/60 transition-colors"
                   >
                     <div>
@@ -83,14 +176,123 @@ export function HomeScreen() {
                     </div>
                     <div className="flex items-center gap-1.5">
                       {v.stakeholders.map((s) => (
-                        <KeyIcon key={s.id} filled />
+                        <KeyIcon
+                          key={s.id}
+                          filled
+                        />
                       ))}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            aria-label={`Vault actions for ${v.name}`}
+                            onClick={(event) => event.stopPropagation()}
+                            style={{
+                              opacity:
+                                showActionsOnMobile || hoveredVaultId === v.id ?
+                                  1
+                                : 0,
+                              pointerEvents:
+                                showActionsOnMobile || hoveredVaultId === v.id ?
+                                  "auto"
+                                : "none",
+                              background: "transparent",
+                              border: 0,
+                              color: "var(--ink-muted)",
+                              padding: 0,
+                              marginLeft: 2,
+                              transition:
+                                "opacity 140ms ease, color 140ms ease",
+                              fontSize: 20,
+                              lineHeight: 1,
+                            }}
+                            onMouseEnter={() => setHoveredVaultId(v.id)}
+                            onMouseLeave={() =>
+                              setHoveredVaultId((current) =>
+                                current === v.id ? null : current,
+                              )
+                            }
+                            className="hover:text-ink focus:text-ink focus:outline-none cursor-pointer"
+                          >
+                            ⋯
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="end"
+                          sideOffset={8}
+                        >
+                          <DropdownMenuItem
+                            onSelect={() => handleOpenVault(v.id)}
+                          >
+                            Open Vault
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onSelect={() =>
+                              setPendingVaultAction({
+                                vaultId: v.id,
+                                vaultName: v.name,
+                                kind: isVaultFounder(v.id) ? "delete" : "leave",
+                              })
+                            }
+                            className="text-crimson focus:text-crimson"
+                          >
+                            {isVaultFounder(v.id) ?
+                              "Delete Vault"
+                            : "Leave Vault"}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
-                  </button>
+                  </div>
                 ))}
               </div>
             )}
           </div>
+
+          {/* Draft Vaults Section */}
+          {draftVaults.length > 0 && (
+            <div className="mt-12">
+              <p className="engraved">Pending Setup</p>
+              <h2 className="serif text-xl text-ink mt-1">Draft vaults in progress</h2>
+              <div className="mt-4 border hairline-strong bg-card divide-y hairline">
+                {draftVaults.map((v) => (
+                  <div
+                    key={v.id}
+                    className="w-full flex items-center justify-between px-6 py-4"
+                  >
+                    <div>
+                      <p className="serif text-lg text-ink">{v.name}</p>
+                      <p className="engraved mt-0.5 text-ink-faint">
+                        Draft · {v.stakeholders.length} partner(s) joined
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button
+                        className="btn-mech btn-mech-ghost py-1.5 px-3 text-xs"
+                        onClick={() => handleResumeDraft(v)}
+                      >
+                        Resume Setup
+                      </button>
+                      <button
+                        className="btn-mech btn-mech-ghost py-1.5 px-3 text-xs text-crimson"
+                        onClick={() =>
+                          setPendingVaultAction({
+                            vaultId: v.id,
+                            vaultName: v.name,
+                            kind: "delete",
+                          })
+                        }
+                      >
+                        Discard
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="border hairline-strong bg-card p-5">
               <p className="engraved">Found a new vault</p>
@@ -128,6 +330,41 @@ export function HomeScreen() {
           </div>
         </div>
       </main>
+      <AlertDialog
+        open={!!pendingVaultAction}
+        onOpenChange={(open) => {
+          if (!open) setPendingVaultAction(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendingVaultAction?.kind === "delete" ?
+                "Delete this vault?"
+              : "Leave this vault?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingVaultAction?.kind === "delete" ?
+                "This will permanently close the vault and remove access for all partners. This cannot be undone."
+              : "You will lose access to this vault and its funds. The remaining partners will retain control."
+              }
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="btn-mech btn-mech-ghost">
+              {pendingVaultAction?.kind === "delete" ? "Keep Vault" : "Stay"}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="btn-mech btn-mech-danger"
+              onClick={confirmVaultAction}
+            >
+              {pendingVaultAction?.kind === "delete" ?
+                "Delete Vault"
+              : "Leave Vault"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <InputStyles />
     </div>
   );
