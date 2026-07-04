@@ -34,17 +34,16 @@ async function reconcileVault(vaultId: string, virtualAccount: string) {
   const orphansCredited: string[] = [];
   const critical: string[] = [];
 
-  // Date range: last 24 hours
-  const dateTo = new Date().toISOString();
-  const dateFrom = new Date(
-    Date.now() - 24 * 60 * 60 * 1000
-  ).toISOString();
+  // Date range: last 24 hours formatted as YYYY-MM-DD
+  const formatReconDate = (date: Date) => date.toISOString().split("T")[0];
+  const dateTo = formatReconDate(new Date());
+  const dateFrom = formatReconDate(new Date(Date.now() - 24 * 60 * 60 * 1000));
 
   // Fetch transactions from Nomba for this period scoping it to our account
   let nombaTransactions: any[] = [];
   try {
     const res = await nombaFetch<any>(
-      `/v1/transactions/accounts?dateFrom=${dateFrom}&dateTo=${dateTo}`,
+      `/v1/transactions/virtual?virtual_account=${virtualAccount}&dateFrom=${dateFrom}&dateTo=${dateTo}`,
       { method: "GET", merchantTxRef: `recon-${vaultId}` }
     );
     nombaTransactions = res?.data?.transactions ?? [];
