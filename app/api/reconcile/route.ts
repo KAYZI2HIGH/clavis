@@ -43,7 +43,7 @@ async function reconcileVault(vaultId: string, virtualAccount: string) {
   let nombaTransactions: any[] = [];
   try {
     const res = await nombaFetch<any>(
-      `/transactions/virtual?virtual_account=${virtualAccount}&dateFrom=${dateFrom}&dateTo=${dateTo}`,
+      `/transactions/accounts?dateFrom=${dateFrom}&dateTo=${dateTo}`,
       { method: "GET", merchantTxRef: `recon-${vaultId}` }
     );
     
@@ -55,12 +55,7 @@ async function reconcileVault(vaultId: string, virtualAccount: string) {
       rawResponse: JSON.stringify(res),
     });
     
-    // Safely check if data itself is the transactions array, or if it is nested inside data.transactions
-    if (Array.isArray(res?.data)) {
-      nombaTransactions = res.data;
-    } else {
-      nombaTransactions = res?.data?.transactions ?? [];
-    }
+    nombaTransactions = res?.data?.transactions ?? [];
   } catch (err) {
     log({
       level: "error",
@@ -153,11 +148,17 @@ async function reconcileVault(vaultId: string, virtualAccount: string) {
     // Case 4: Exists on Nomba but not in our DB at all
     // Only handle incoming credits (virtual account funding)
     const isCredit = 
-      nombaTx.type?.toUpperCase() === "CREDIT" || 
-      nombaTx.transactionType?.toUpperCase() === "VACT_TRANSFER" ||
-      nombaTx.type === "credit";
+      nombaTx.type?.toLowerCase() === "credit" || 
+      nombaTx.type?.toLowerCase() === "vact_transfer" ||
+      nombaTx.transactionType?.toLowerCase() === "vact_transfer";
 
-    if (!localTx && isCredit && 
+    // Verify this transaction actually belongs to this vault's virtual account
+    // Nomba transactions typically carry the destination virtual account in customerBillerId
+    const isForThisVault = 
+      !nombaTx.customerBillerId || 
+      nombaTx.customerBillerId === virtualAccount;
+
+    if (!localTx && isCredit && isForThisVault && 
         nombaTx.status?.toUpperCase() === "SUCCESS") {
       // Credit vault balance
       await getServiceClient().rpc("increment_vault_balance", {
