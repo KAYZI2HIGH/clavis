@@ -43,7 +43,7 @@ async function reconcileVault(vaultId: string, virtualAccount: string) {
   let nombaTransactions: any[] = [];
   try {
     const res = await nombaFetch<any>(
-      `/v1/transactions/virtual?virtual_account=${virtualAccount}&dateFrom=${dateFrom}&dateTo=${dateTo}`,
+      `/transactions/virtual?virtual_account=${virtualAccount}&dateFrom=${dateFrom}&dateTo=${dateTo}`,
       { method: "GET", merchantTxRef: `recon-${vaultId}` }
     );
     nombaTransactions = res?.data?.transactions ?? [];
