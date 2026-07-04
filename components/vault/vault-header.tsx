@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useVault } from "@/hooks/use-vault";
 import { formatNGN } from "@/lib/format";
@@ -16,6 +17,7 @@ export function VaultHeader({
   vault: Vault;
   onSettings: () => void;
 }) {
+  const router = useRouter();
   const [copied, setCopied] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const { state, updateVaultFundingAccount, reloadVaults } = useVault();
@@ -41,6 +43,7 @@ export function VaultHeader({
       updateVaultFundingAccount(vault.id, accountNumber, bankName);
       // Optimistically reload the vaults data globally to keep lists synced
       await reloadVaults().catch(() => {});
+      router.refresh();
       toast.success("Funding account set up successfully.");
     } catch {
       toast.error("Something went wrong. Please try again.");

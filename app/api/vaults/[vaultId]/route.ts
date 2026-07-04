@@ -169,5 +169,6 @@ export async function PATCH(
       viaToken: pj.via_token,
       requestedAt: new Date(pj.requested_at).getTime(),
     })),
+    updatedAt: new Date(v.updated_at).getTime(),
   });
 }

@@ -166,7 +166,8 @@ export async function GET() {
     getServiceClient()
       .from("vaults")
       .select("*")
-      .in("id", vaultIds), // Return both active and draft vaults
+      .in("id", vaultIds)
+      .order("updated_at", { ascending: false }), // Return both active and draft vaults sorted by recently added/updated first
     getServiceClient().from("stakeholders").select("*").in("vault_id", vaultIds),
     getServiceClient()
       .from("transactions")
@@ -293,6 +294,7 @@ export async function GET() {
       linkInvitations,
       pendingJoins,
       emailInvites,
+      updatedAt: new Date(v.updated_at).getTime(),
     };
   });
 

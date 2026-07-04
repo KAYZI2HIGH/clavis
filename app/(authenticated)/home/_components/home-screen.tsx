@@ -97,8 +97,13 @@ export function HomeScreen() {
       (stakeholder) => stakeholder.id === state.vaults.find((vault) => vault.id === vaultId)?.youId,
     )?.isFounder ?? false;
 
-  const activeVaults = state.vaults.filter((v) => v.status !== "draft");
-  const draftVaults = state.vaults.filter((v) => v.status === "draft");
+  // Sort vaults dynamically so recently added or updated are at the top (reversed)
+  const activeVaults = state.vaults
+    .filter((v) => v.status !== "draft")
+    .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
+  const draftVaults = state.vaults
+    .filter((v) => v.status === "draft")
+    .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
 
   const handleResumeDraft = (v: any) => {
     resumeDraft(v);

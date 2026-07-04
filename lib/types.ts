@@ -78,6 +78,7 @@ export type Vault = {
   emailInvites: EmailInvite[];
   status: "draft" | "active";
   nombaVirtualAccountBank?: string;
+  updatedAt?: number;
 };
 
 export type DraftStakeholder = {
