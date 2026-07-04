@@ -46,7 +46,13 @@ async function reconcileVault(vaultId: string, virtualAccount: string) {
       `/transactions/virtual?virtual_account=${virtualAccount}&dateFrom=${dateFrom}&dateTo=${dateTo}`,
       { method: "GET", merchantTxRef: `recon-${vaultId}` }
     );
-    nombaTransactions = res?.data?.transactions ?? [];
+    
+    // Safely check if data itself is the transactions array, or if it is nested inside data.transactions
+    if (Array.isArray(res?.data)) {
+      nombaTransactions = res.data;
+    } else {
+      nombaTransactions = res?.data?.transactions ?? [];
+    }
   } catch (err) {
     log({
       level: "error",
