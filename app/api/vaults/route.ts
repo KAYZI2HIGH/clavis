@@ -148,7 +148,7 @@ export async function GET() {
       id,
       is_founder,
       vault_id,
-      vaults (
+      vaults!stakeholders_vault_id_fkey (
         id,
         name,
         quorum,
@@ -171,7 +171,7 @@ export async function GET() {
   }
 
   const vaults = memberships
-    ?.map((m) => m.vaults)
+    ?.map((m: any) => m.vaults)
     .filter(Boolean) ?? [];
 
   return Response.json({ vaults });
