@@ -1,5 +1,7 @@
 import type { Draft } from "@/lib/types";
 
+// NOTE: These localStorage helper functions are retained for fallback/backwards compatibility only.
+// The new creation flow uses real-time API writes stored directly inside the Supabase database.
 const DRAFT_KEY = "clavis_vault_draft";
 
 export function saveDraft(draft: Draft): void {

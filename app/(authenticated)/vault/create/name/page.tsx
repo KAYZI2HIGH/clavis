@@ -2,48 +2,86 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-// import { useVault } from "@/hooks/use-vault";
-// TODO: Batch 4 - Replace with URL-based / React Query dynamic state creation
-import { CreateStepShell, RequireDraft } from "../_components/create-step-shell";
+import { useSession } from "next-auth/react";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query-keys";
+import { makeId, makeInitials } from "@/lib/vault-utils";
+import { CreateStepShell } from "../_components/create-step-shell";
+import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 
-function CreateNameContent() {
-  // const { state, setDraftName, setDraftMethod, setDraftVaultId } = useVault();
-  const state = { draft: { name: "", method: "link" } } as any;
-  const setDraftName = (() => {}) as any;
-  const setDraftMethod = (() => {}) as any;
-  const setDraftVaultId = (() => {}) as any;
+export default function CreateNamePage() {
+  const { data: session } = useSession();
   const router = useRouter();
-  const draft = state.draft!;
+  const qc = useQueryClient();
+
+  const [name, setName] = useState("");
+  const [method, setMethod] = useState<"link" | "email">("link");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const valid = draft.name.trim().length > 0;
+
+  const valid = name.trim().length > 0;
 
   const handleContinue = async () => {
     if (!valid || loading) return;
     setLoading(true);
     setError(null);
 
-    try {
-      const res = await fetch("/api/vaults", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: draft.name, method: draft.method ?? "link" }),
-      });
+    const vaultId = makeId("v");
 
+    // Optimistically seed React Query cache
+    qc.setQueryData(queryKeys.vaults.detail(vaultId), {
+      id: vaultId,
+      name: name.trim(),
+      quorum: 2,
+      status: "draft",
+      balance_kobo: 0,
+      funding_account: "",
+      stakeholders: [{
+        id: makeId("sh"),
+        name: session?.user?.name ?? "You",
+        email: session?.user?.email ?? "",
+        initials: makeInitials(session?.user?.name ?? "You"),
+        is_founder: true,
+        vault_id: vaultId,
+      }],
+      transactions: [],
+      linkInvitations: [],
+      emailInvites: [],
+      pendingJoins: [],
+      youId: "",
+      founderId: "",
+    });
+
+    // Navigate immediately
+    router.push(`/vault/create/${vaultId}/invite`);
+
+    // Fire API in background
+    fetch("/api/vaults/draft", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: name.trim(), vaultId }),
+    }).then(async (res) => {
       if (!res.ok) {
-        const payload = await res.json().catch(() => ({}));
-        setError(payload.error ?? "Failed to create vault. Please try again.");
-        setLoading(false);
-        return;
+        // Rollback
+        qc.removeQueries({ 
+          queryKey: queryKeys.vaults.detail(vaultId) 
+        });
+        router.push("/vault/create/name");
+        toast.error("Failed to create vault. Try again.");
+      } else {
+        // Confirm cache with real data
+        qc.invalidateQueries({ 
+          queryKey: queryKeys.vaults.detail(vaultId) 
+        });
       }
-
-      const data = await res.json();
-      setDraftVaultId(data.id, data.linkToken);
-      router.push("/vault/create/invite");
-    } catch {
-      setError("Network error. Please try again.");
-      setLoading(false);
-    }
+    }).catch(() => {
+      qc.removeQueries({ 
+        queryKey: queryKeys.vaults.detail(vaultId) 
+      });
+      router.push("/vault/create/name");
+      toast.error("Failed to create vault. Try again.");
+    });
   };
 
   return (
@@ -56,8 +94,8 @@ function CreateNameContent() {
         <input
           autoFocus
           className="input-mech"
-          value={draft.name}
-          onChange={(e) => setDraftName(e.target.value)}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleContinue()}
           placeholder="Riverside Holdings"
           disabled={loading}
@@ -68,16 +106,15 @@ function CreateNameContent() {
         {error && <p className="text-sm text-crimson mt-3">{error}</p>}
       </div>
 
-      {/* Invite method toggle — set early so POST knows which token to create */}
       <div className="mt-8">
         <p className="engraved mb-3">Invite method</p>
         <div className="inline-flex border hairline-strong" style={{ borderRadius: 2 }}>
           {(["link", "email"] as const).map((m) => (
             <button
               key={m}
-              onClick={() => setDraftMethod(m)}
+              onClick={() => setMethod(m)}
               disabled={loading}
-              className={`px-4 py-2 text-sm transition-colors ${draft.method === m ? "bg-ink text-paper" : "text-ink-muted hover:text-ink"}`}
+              className={`px-4 py-2 text-sm transition-colors ${method === m ? "bg-ink text-paper" : "text-ink-muted hover:text-ink"}`}
             >
               {m === "link" ? "Share a Link" : "Invite by Email"}
             </button>
@@ -87,21 +124,14 @@ function CreateNameContent() {
 
       <div className="mt-12 flex justify-end">
         <button
-          className="btn-mech btn-mech-ghost disabled:opacity-40 disabled:cursor-not-allowed"
+          className="btn-mech btn-mech-ghost disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
           onClick={handleContinue}
           disabled={!valid || loading}
         >
+          {loading && <Loader2 className="h-3 w-3 animate-spin" />}
           {loading ? "Creating vault…" : "Continue"}
         </button>
       </div>
     </CreateStepShell>
-  );
-}
-
-export default function CreateNamePage() {
-  return (
-    <RequireDraft>
-      <CreateNameContent />
-    </RequireDraft>
   );
 }

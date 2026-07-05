@@ -21,43 +21,62 @@ export async function PATCH(
   }
 
   const { vaultId } = await params;
-
-  let body: {
-    quorum?: number;
-    emailStakeholders?: { name: string; email: string; initials: string }[];
-  };
-  try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
-
+  const body = await request.json().catch(() => ({}));
   const quorum = Number(body.quorum);
+
   if (isNaN(quorum) || quorum < 1) {
     return Response.json({ error: "Valid quorum is required" }, { status: 400 });
+  }
+
+  // Retrieve the vault to check its state
+  const { data: vault, error: vaultLookupError } = await getServiceClient()
+    .from("vaults")
+    .select("status, founder_id")
+    .eq("id", vaultId)
+    .maybeSingle();
+
+  if (vaultLookupError || !vault) {
+    return Response.json({ error: "Vault not found" }, { status: 404 });
   }
 
   const email = session.user.email;
   const phone = session.user.phone;
 
-  // Verify caller is the founder of this vault
-  const { data: founderRow, error: founderErr } = await getServiceClient()
+  // Confirm user is founder
+  const { data: founder } = await getServiceClient()
     .from("stakeholders")
-    .select("id, vault_id")
+    .select("id")
     .eq("vault_id", vaultId)
     .eq("is_founder", true)
     .or(
       [email ? `email.eq.${email}` : null, phone ? `phone.eq.${phone}` : null]
         .filter(Boolean)
-        .join(","),
+        .join(",")
     )
-    .single();
+    .maybeSingle();
 
-  if (founderErr || !founderRow) {
-    return Response.json({ error: "Vault not found or not authorized" }, { status: 403 });
+  if (!founder) {
+    return Response.json(
+      { error: "Only the founder can update quorum" },
+      { status: 403 }
+    );
   }
 
-  const founderStakeholderId = founderRow.id;
+  // If vault is draft, we only update the quorum and return early
+  if (vault.status === "draft") {
+    await getServiceClient()
+      .from("vaults")
+      .update({
+        quorum,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", vaultId);
+
+    return Response.json({ quorum });
+  }
+
+  // Otherwise fallback to original PATCH active transition behaviour (for backwards compatibility if any)
+  const founderStakeholderId = founder.id;
 
   // Write any pending email invites (method=email path)
   const emailStakeholders = body.emailStakeholders ?? [];

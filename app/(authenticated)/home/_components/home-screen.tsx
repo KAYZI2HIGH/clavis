@@ -7,6 +7,8 @@ import { InputStyles } from "@/components/shared/input-styles";
 import { KeyIcon } from "@/components/shared/key-icon";
 import { Wordmark } from "@/components/shared/wordmark";
 import { useSession, signOut } from "next-auth/react";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query-keys";
 import { useVaultsQuery } from "@/hooks/use-vaults-query";
 import { VaultListSkeleton } from "@/components/vault/vault-list-skeleton";
 import { saveDraft } from "@/lib/draft";
@@ -32,6 +34,7 @@ import {
 export function HomeScreen() {
   const { data: session } = useSession();
   const { data: vaults, isLoading } = useVaultsQuery();
+  const qc = useQueryClient();
   const router = useRouter();
   const [pasted, setPasted] = useState("");
   const [hoveredVaultId, setHoveredVaultId] = useState<string | null>(null);
@@ -96,11 +99,27 @@ export function HomeScreen() {
     toast.info("Leave vault coming soon");
   };
 
+  const handleDiscard = async (vaultId: string) => {
+    const res = await fetch(`/api/vaults/${vaultId}/draft`, { method: "DELETE" });
+    if (res.ok) {
+      qc.invalidateQueries({ queryKey: queryKeys.vaults.all });
+      toast.success("Draft vault discarded");
+    } else {
+      toast.error("Failed to discard vault");
+    }
+  };
+
   const confirmVaultAction = () => {
     if (!pendingVaultAction) return;
 
     if (pendingVaultAction.kind === "delete") {
-      handleDeleteVault(pendingVaultAction.vaultId);
+      // If it's a draft vault, we discard it
+      const v = vaults?.find((vault) => vault.id === pendingVaultAction.vaultId);
+      if (v?.status === "draft") {
+        handleDiscard(pendingVaultAction.vaultId);
+      } else {
+        handleDeleteVault(pendingVaultAction.vaultId);
+      }
     } else {
       handleLeaveVault(pendingVaultAction.vaultId);
     }
@@ -113,6 +132,12 @@ export function HomeScreen() {
     return v?.founderId === v?.youId;
   };
 
+  const isFounderOfVault = (vault: any) => {
+    return vault.stakeholders?.some(
+      (s: any) => s.email === session?.user?.email && s.is_founder
+    );
+  };
+
   // Sort vaults dynamically so recently added or updated are at the top (reversed)
   const activeVaults = (vaults ?? [])
     .filter((v) => v.status !== "draft")
@@ -122,14 +147,7 @@ export function HomeScreen() {
     .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
 
   const handleResumeDraft = (v: any) => {
-    // Determine the next step to resume to
-    if (v.stakeholders.length <= 1 && v.emailInvites.length === 0) {
-      router.push("/vault/create/invite");
-    } else if (v.quorum === null || v.quorum === 0) {
-      router.push("/vault/create/quorum");
-    } else {
-      router.push("/vault/create/review");
-    }
+    router.push(`/vault/create/${v.id}/invite`);
   };
 
   return (
@@ -285,24 +303,32 @@ export function HomeScreen() {
                       </p>
                     </div>
                     <div className="flex items-center gap-3">
-                      <button
-                        className="btn-mech btn-mech-ghost py-1.5 px-3 text-xs"
-                        onClick={() => handleResumeDraft(v)}
-                      >
-                        Resume Setup
-                      </button>
-                      <button
-                        className="btn-mech btn-mech-ghost py-1.5 px-3 text-xs text-crimson"
-                        onClick={() =>
-                          setPendingVaultAction({
-                            vaultId: v.id,
-                            vaultName: v.name,
-                            kind: "delete",
-                          })
-                        }
-                      >
-                        Discard
-                      </button>
+                      {isFounderOfVault(v) ? (
+                        <>
+                          <button
+                            className="btn-mech btn-mech-ghost py-1.5 px-3 text-xs"
+                            onClick={() => handleResumeDraft(v)}
+                          >
+                            Resume Setup
+                          </button>
+                          <button
+                            className="btn-mech btn-mech-ghost py-1.5 px-3 text-xs text-crimson"
+                            onClick={() =>
+                              setPendingVaultAction({
+                                vaultId: v.id,
+                                vaultName: v.name,
+                                kind: "delete",
+                              })
+                            }
+                          >
+                            Discard
+                          </button>
+                        </>
+                      ) : (
+                        <p className="text-xs text-ink-muted">
+                          Waiting for founder to complete setup
+                        </p>
+                      )}
                     </div>
                   </div>
                 ))}
