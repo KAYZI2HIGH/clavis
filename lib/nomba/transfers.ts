@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { log } from "@/lib/logger";
 import { nombaFetch } from "@/lib/nomba/client";
+import { getNombaSubaccountId } from "@/lib/nomba/env";
 
 type RecipientLookupResponse = {
   accountName: string;
@@ -102,19 +103,22 @@ export async function initiateTransfer({
     recipientName: resolvedAccountName,
   });
 
-  const data = await nombaFetch<TransferInitiationResponse>("/transfers/bank", {
-    method: "POST",
-    merchantTxRef,
-    body: {
-      amount,
-      bankCode,
-      accountNumber,
-      accountName: resolvedAccountName,
-      senderName: resolvedSenderName,
-      narration,
+  const data = await nombaFetch<TransferInitiationResponse>(
+    `/transfers/bank/${getNombaSubaccountId()}`,
+    {
+      method: "POST",
       merchantTxRef,
-    },
-  });
+      body: {
+        amount,
+        bankCode,
+        accountNumber,
+        accountName: resolvedAccountName,
+        senderName: resolvedSenderName,
+        narration,
+        merchantTxRef,
+      },
+    }
+  );
 
   log({
     level: "info",
