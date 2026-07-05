@@ -20,12 +20,26 @@ export async function POST(
     );
   }
 
-  // Confirm rejector is a vault member
+  // Confirm rejector is a vault member (match by email or phone)
+  const email = session.user.email;
+  const phone = (session.user as any).phone;
+
+  const orParts = [];
+  if (email) orParts.push(`email.eq.${email}`);
+  if (phone) orParts.push(`phone.eq.${phone}`);
+
+  if (orParts.length === 0) {
+    return Response.json(
+      { error: "Not a vault member" },
+      { status: 403 }
+    );
+  }
+
   const { data: member } = await getServiceClient()
     .from("stakeholders")
     .select("id")
     .eq("vault_id", vaultId)
-    .eq("email", session.user.email)
+    .or(orParts.join(","))
     .maybeSingle();
 
   if (!member) {

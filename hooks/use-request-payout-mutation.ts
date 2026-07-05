@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import { toast } from "sonner";
+import { useVault } from "@/hooks/use-vault";
 
 export type RequestPayoutPayload = {
   recipientName: string;
@@ -13,6 +14,7 @@ export type RequestPayoutPayload = {
 
 export function useRequestPayoutMutation(vaultId: string) {
   const qc = useQueryClient();
+  const { reloadVaults } = useVault();
   return useMutation({
     mutationFn: async (payload: RequestPayoutPayload) => {
       const res = await fetch(
@@ -36,6 +38,7 @@ export function useRequestPayoutMutation(vaultId: string) {
       qc.invalidateQueries({ 
         queryKey: queryKeys.vaults.detail(vaultId) 
       });
+      reloadVaults();
       toast.success("Payout request submitted.");
     },
     onError: (error: Error) => {

@@ -167,6 +167,19 @@ export function useVaultRealtime(vaultId: string | null) {
         {
           event: "INSERT",
           schema: "public",
+          table: "transaction_approvals",
+        },
+        () => {
+          // Sync local context provider reducer state so approval key counts update in real-time
+          reloadVaults();
+        }
+      )
+
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
           table: "reconciliation_logs",
         },
         (payload) => {

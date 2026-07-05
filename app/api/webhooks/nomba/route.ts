@@ -298,7 +298,8 @@ async function handleTransferFailed(
     return;
   }
 
-  const refundResult = await incrementVaultBalanceKobo(tx.vault_id, data.amount);
+  const refundAmountKobo = Math.round(data.amount * 100);
+  const refundResult = await incrementVaultBalanceKobo(tx.vault_id, refundAmountKobo);
   if (!refundResult.ok) {
     log({
       level: "error",
