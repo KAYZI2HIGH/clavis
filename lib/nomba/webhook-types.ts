@@ -64,7 +64,7 @@ export function parseTransferEventData(
   const transaction = data.transaction;
   if (!isRecord(transaction)) return null;
 
-  const merchantTxRef = transaction.transactionId;
+  const merchantTxRef = transaction.merchantTxRef || transaction.transactionId;
   const amount = transaction.transactionAmount;
   const currency = transaction.currency || "NGN";
   if (
