@@ -10,7 +10,7 @@ export type Stakeholder = {
 /** Backwards-compat alias — Partner === Stakeholder for the active vault. */
 export type Partner = Stakeholder;
 
-export type TxStatus = "pending" | "sealed" | "settled" | "declined";
+export type TxStatus = "pending" | "sealed" | "executing" | "settled" | "declined" | "failed";
 
 export type Transaction = {
   id: string;
