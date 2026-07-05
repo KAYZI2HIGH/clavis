@@ -6,9 +6,11 @@ import { toast } from "sonner";
 import { InputStyles } from "@/components/shared/input-styles";
 import { KeyIcon } from "@/components/shared/key-icon";
 import { Wordmark } from "@/components/shared/wordmark";
-import { useAuth } from "@/hooks/use-auth";
-// import { useVault } from "@/hooks/use-vault";
-// TODO: Batch 4 - Replace with React Query & URL routing
+import { useSession, signOut } from "next-auth/react";
+import { useVaultsQuery } from "@/hooks/use-vaults-query";
+import { VaultListSkeleton } from "@/components/vault/vault-list-skeleton";
+import { saveDraft } from "@/lib/draft";
+import { makeId, makeInitials } from "@/lib/vault-utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,14 +30,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export function HomeScreen() {
-  // const { state, openVault, startDraft, resumeDraft, removeVault, loading } = useVault();
-  const state = { vaults: [], currentPartner: "" } as any;
-  const openVault = (() => {}) as any;
-  const startDraft = (() => {}) as any;
-  const resumeDraft = (() => {}) as any;
-  const removeVault = (() => {}) as any;
-  const loading = false;
-  const { authedName, signOut } = useAuth();
+  const { data: session } = useSession();
+  const { data: vaults, isLoading } = useVaultsQuery();
   const router = useRouter();
   const [pasted, setPasted] = useState("");
   const [hoveredVaultId, setHoveredVaultId] = useState<string | null>(null);
@@ -63,57 +59,69 @@ export function HomeScreen() {
   };
 
   const handleSignOut = () => {
-    signOut();
-    router.push("/");
+    void signOut({ redirectTo: "/" });
   };
 
   const handleCreateVault = () => {
-    startDraft(authedName || "You");
+    const name = session?.user?.name ?? "You";
+    saveDraft({
+      name: "",
+      quorum: 2,
+      method: "link",
+      stakeholders: [
+        {
+          id: makeId("sh"),
+          name,
+          email: session?.user?.email ?? "",
+          initials: makeInitials(name),
+          isFounder: true,
+        },
+      ],
+      linkToken: makeId("tk"),
+    });
     router.push("/vault/create/name");
   };
 
   const handleOpenVault = (id: string) => {
-    openVault(id);
-    router.push("/vault");
+    router.push(`/vault/${id}`);
   };
 
-  const deleteVault = (vaultId: string) => {
-    removeVault(vaultId);
-    toast.success("Vault deleted");
+  const handleDeleteVault = async (vaultId: string) => {
+    // TODO: Batch 5 — wire to DELETE /api/vaults/[vaultId]
+    toast.info("Delete vault coming soon");
   };
 
-  const leaveVault = (vaultId: string) => {
-    removeVault(vaultId);
-    toast.success("You have left the vault");
+  const handleLeaveVault = async (vaultId: string) => {
+    // TODO: Batch 5 — wire to POST /api/vaults/[vaultId]/leave
+    toast.info("Leave vault coming soon");
   };
 
   const confirmVaultAction = () => {
     if (!pendingVaultAction) return;
 
     if (pendingVaultAction.kind === "delete") {
-      deleteVault(pendingVaultAction.vaultId);
+      handleDeleteVault(pendingVaultAction.vaultId);
     } else {
-      leaveVault(pendingVaultAction.vaultId);
+      handleLeaveVault(pendingVaultAction.vaultId);
     }
 
     setPendingVaultAction(null);
   };
 
-  const isVaultFounder = (vaultId: string) =>
-    state.vaults.find((vault: any) => vault.id === vaultId)?.stakeholders.find(
-      (stakeholder: any) => stakeholder.id === state.vaults.find((vault: any) => vault.id === vaultId)?.youId,
-    )?.isFounder ?? false;
+  const isVaultFounder = (vaultId: string) => {
+    const v = vaults?.find((vault) => vault.id === vaultId);
+    return v?.founderId === v?.youId;
+  };
 
   // Sort vaults dynamically so recently added or updated are at the top (reversed)
-  const activeVaults = state.vaults
-    .filter((v: any) => v.status !== "draft")
-    .sort((a: any, b: any) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
-  const draftVaults = state.vaults
-    .filter((v: any) => v.status === "draft")
-    .sort((a: any, b: any) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
+  const activeVaults = (vaults ?? [])
+    .filter((v) => v.status !== "draft")
+    .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
+  const draftVaults = (vaults ?? [])
+    .filter((v) => v.status === "draft")
+    .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
 
   const handleResumeDraft = (v: any) => {
-    resumeDraft(v);
     // Determine the next step to resume to
     if (v.stakeholders.length <= 1 && v.emailInvites.length === 0) {
       router.push("/vault/create/invite");
@@ -130,7 +138,7 @@ export function HomeScreen() {
         <Wordmark size="sm" />
         <div className="flex items-center gap-4">
           <p className="engraved text-ink-faint">
-            Signed in as {authedName || "you"}
+            Signed in as {session?.user?.name ?? "you"}
           </p>
           <button
             className="engraved text-ink-faint hover:text-ink transition-colors"
@@ -147,20 +155,17 @@ export function HomeScreen() {
             Which vault would you like to open?
           </h1>
           <div className="mt-10">
-            {loading ? (
-              <div className="border hairline-strong bg-card px-6 py-12 flex flex-col items-center justify-center gap-4">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-ink"></div>
-                <p className="engraved text-xs text-ink-muted tracking-wider">Unlocking Keychain…</p>
-              </div>
-            ) : activeVaults.length === 0 ? (
+            {isLoading ? (
+              <VaultListSkeleton />
+            ) : !vaults || vaults.length === 0 ? (
               <div className="border hairline-strong bg-card px-6 py-8 text-center">
                 <p className="text-sm text-ink-muted">
-                  You don&apos;t hold a key to any active vault yet.
+                  You don&apos;t hold a key to any vault yet.
                 </p>
               </div>
             ) : (
               <div className="border hairline-strong bg-card divide-y hairline">
-                {activeVaults.map((v: any) => (
+                {activeVaults.map((v) => (
                   <div
                     key={v.id}
                     role="button"
@@ -183,11 +188,11 @@ export function HomeScreen() {
                     <div>
                       <p className="serif text-xl text-ink">{v.name}</p>
                       <p className="engraved mt-1">
-                        Requires {v.quorum} of {v.stakeholders.length} keys
+                        Requires {v.quorum} of {v.stakeholders?.length ?? 0} keys
                       </p>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      {v.stakeholders.map((s: any) => (
+                      {v.stakeholders?.map((s) => (
                         <KeyIcon
                           key={s.id}
                           filled
@@ -268,7 +273,7 @@ export function HomeScreen() {
               <p className="engraved">Pending Setup</p>
               <h2 className="serif text-xl text-ink mt-1">Draft vaults in progress</h2>
               <div className="mt-4 border hairline-strong bg-card divide-y hairline">
-                {draftVaults.map((v: any) => (
+                {draftVaults.map((v) => (
                   <div
                     key={v.id}
                     className="w-full flex items-center justify-between px-6 py-4"
@@ -276,7 +281,7 @@ export function HomeScreen() {
                     <div>
                       <p className="serif text-lg text-ink">{v.name}</p>
                       <p className="engraved mt-0.5 text-ink-faint">
-                        Draft · {v.stakeholders.length} partner(s) joined
+                        Draft · {v.stakeholders?.length ?? 0} partner(s) joined
                       </p>
                     </div>
                     <div className="flex items-center gap-3">

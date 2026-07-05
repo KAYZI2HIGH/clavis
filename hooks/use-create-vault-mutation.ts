@@ -27,8 +27,11 @@ export function useCreateVaultMutation() {
       }
       return res.json() as Promise<Vault>;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.vaults.all });
+    onSuccess: (data) => {
+      qc.invalidateQueries({ 
+        queryKey: queryKeys.vaults.all 
+      });
+      // Navigation handled by the review page
     },
     onError: (error: Error) => {
       toast.error(error.message);
