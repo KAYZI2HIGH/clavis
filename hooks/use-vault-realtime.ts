@@ -6,11 +6,13 @@ import { toast } from "sonner";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { queryKeys } from "@/lib/query-keys";
 import { formatNGN } from "@/lib/format";
-import { useVault } from "@/hooks/use-vault";
+// import { useVault } from "@/hooks/use-vault";
+// TODO: Batch 4 - Replace with URL-based / React Query query invalidation callbacks
 
 export function useVaultRealtime(vaultId: string | null) {
   const qc = useQueryClient();
-  const { reloadVaults } = useVault();
+  // const { reloadVaults } = useVault();
+  const reloadVaults = (() => {}) as any;
 
   useEffect(() => {
     if (!vaultId) return;

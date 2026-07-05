@@ -11,7 +11,8 @@ import { DetailRow } from "@/components/shared/detail-row";
 import { KeyIcon } from "@/components/shared/key-icon";
 import { Seal } from "@/components/shared/seal";
 import { StatusPill } from "@/components/shared/status-pill";
-import { useVault } from "@/hooks/use-vault";
+// import { useVault } from "@/hooks/use-vault";
+// TODO: Batch 4 - Replace with URL-based active vault stakeholder query state
 import { formatTime, formatNGN } from "@/lib/format";
 import type { Vault } from "@/lib/types";
 
@@ -26,7 +27,8 @@ export function TxDetailSheet({
   onClose: () => void;
   onApprove: () => void;
 }) {
-  const { state } = useVault();
+  // const { state } = useVault();
+  const state = { currentPartner: "" } as any;
   const tx = vault.transactions.find((t) => t.id === txId) ?? null;
   const current = state.currentPartner;
   const open = !!tx;

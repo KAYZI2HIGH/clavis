@@ -172,3 +172,98 @@ export async function PATCH(
     updatedAt: new Date(v.updated_at).getTime(),
   });
 }
+
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ vaultId: string }> }
+) {
+  const session = await auth();
+  if (!session?.user) {
+    return Response.json(
+      { error: "Unauthorized" },
+      { status: 401 }
+    );
+  }
+
+  const { vaultId } = await params;
+
+  // Confirm user is a member
+  const { data: membership } = await getServiceClient()
+    .from("stakeholders")
+    .select("id, is_founder")
+    .eq("vault_id", vaultId)
+    .eq("email", session.user.email)
+    .maybeSingle();
+
+  if (!membership) {
+    return Response.json(
+      { error: "Not a vault member" },
+      { status: 403 }
+    );
+  }
+
+  // Fetch vault
+  const { data: vault } = await getServiceClient()
+    .from("vaults")
+    .select("*")
+    .eq("id", vaultId)
+    .maybeSingle();
+
+  if (!vault) {
+    return Response.json(
+      { error: "Vault not found" },
+      { status: 404 }
+    );
+  }
+
+  // Fetch stakeholders
+  const { data: stakeholders } = await getServiceClient()
+    .from("stakeholders")
+    .select("*")
+    .eq("vault_id", vaultId);
+
+  // Fetch transactions with approvals
+  const { data: transactions } = await getServiceClient()
+    .from("transactions")
+    .select(`
+      *,
+      transaction_approvals (
+        id,
+        stakeholder_id,
+        approved_at
+      )
+    `)
+    .eq("vault_id", vaultId)
+    .order("requested_at", { ascending: false });
+
+  // Fetch link invitations
+  const { data: linkInvitations } = await getServiceClient()
+    .from("link_invitations")
+    .select("*")
+    .eq("vault_id", vaultId);
+
+  // Fetch email invites
+  const { data: emailInvites } = await getServiceClient()
+    .from("email_invites")
+    .select("*")
+    .eq("vault_id", vaultId);
+
+  // Fetch pending joins
+  const { data: pendingJoins } = await getServiceClient()
+    .from("pending_joins")
+    .select("*")
+    .eq("vault_id", vaultId);
+
+  return Response.json({
+    vault: {
+      ...vault,
+      stakeholders: stakeholders ?? [],
+      transactions: transactions ?? [],
+      linkInvitations: linkInvitations ?? [],
+      emailInvites: emailInvites ?? [],
+      pendingJoins: pendingJoins ?? [],
+      youId: membership.id,
+      founderId: vault.founder_id,
+    }
+  });
+}

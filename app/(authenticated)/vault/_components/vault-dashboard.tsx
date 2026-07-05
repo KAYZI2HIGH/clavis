@@ -4,7 +4,8 @@ import { useState } from "react";
 import { TransactionsList } from "@/components/vault/transactions-list";
 import { VaultFooter } from "@/components/vault/vault-footer";
 import { VaultHeader } from "@/components/vault/vault-header";
-import { useActiveVault } from "@/hooks/use-vault";
+// import { useActiveVault } from "@/hooks/use-vault";
+// TODO: Batch 4 - Replace with URL-based active vault lookup query
 import { useVaultRealtime } from "@/hooks/use-vault-realtime";
 import { ApprovalDialog } from "./approval-dialog";
 import { RequestPayoutSheet } from "./request-payout-sheet";
@@ -14,7 +15,8 @@ import { TxDetailSheet } from "./tx-detail-sheet";
 import { ReconciliationBanner } from "@/components/vault/reconciliation-banner";
 
 export function VaultDashboard() {
-  const vault = useActiveVault();
+  // const vault = useActiveVault();
+  const vault = null as any;
   useVaultRealtime(vault?.id ?? null);
   const [requestOpen, setRequestOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);

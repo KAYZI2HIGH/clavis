@@ -8,8 +8,9 @@ export function useVaultsQuery() {
     queryFn: async () => {
       const res = await fetch("/api/vaults");
       if (!res.ok) throw new Error("Failed to fetch vaults");
-      const data = await res.json();
-      return data.vaults as Vault[];
+      const { vaults } = await res.json();
+      return vaults as Vault[];
     },
+    staleTime: 1000 * 30,
   });
 }

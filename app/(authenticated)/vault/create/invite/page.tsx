@@ -4,12 +4,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { KeyIcon } from "@/components/shared/key-icon";
-import { useVault } from "@/hooks/use-vault";
+// import { useVault } from "@/hooks/use-vault";
+// TODO: Batch 4 - Replace with URL-based draft retrieval state
 import { makeInitials } from "@/lib/vault-utils";
 import { CreateStepShell, RequireDraft } from "../_components/create-step-shell";
 
 function CreateInviteContent() {
-  const { state } = useVault();
+  // const { state } = useVault();
+  const state = { draft: { vaultId: "", linkToken: "" } } as any;
   const router = useRouter();
   const draft = state.draft!;
 
@@ -156,7 +158,7 @@ function CreateInviteContent() {
             <p className="engraved mb-3">Key-holders</p>
             <div className="border hairline-strong bg-card divide-y hairline">
               {/* Founder is always first */}
-              {draft.stakeholders.filter((sh) => sh.isFounder).map((sh) => (
+              {draft.stakeholders.filter((sh: any) => sh.isFounder).map((sh: any) => (
                 <div key={sh.id} className="flex items-center gap-3 px-4 py-3">
                   <div className="w-7 h-7 border hairline-strong flex items-center justify-center mono text-[10px] text-ink" style={{ borderRadius: 999 }}>
                     {sh.initials}

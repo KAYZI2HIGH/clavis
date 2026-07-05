@@ -7,7 +7,8 @@ import { InputStyles } from "@/components/shared/input-styles";
 import { KeyIcon } from "@/components/shared/key-icon";
 import { Wordmark } from "@/components/shared/wordmark";
 import { useAuth } from "@/hooks/use-auth";
-import { useVault } from "@/hooks/use-vault";
+// import { useVault } from "@/hooks/use-vault";
+// TODO: Batch 4 - Replace with React Query & URL routing
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,7 +28,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export function HomeScreen() {
-  const { state, openVault, startDraft, resumeDraft, removeVault, loading } = useVault();
+  // const { state, openVault, startDraft, resumeDraft, removeVault, loading } = useVault();
+  const state = { vaults: [], currentPartner: "" } as any;
+  const openVault = (() => {}) as any;
+  const startDraft = (() => {}) as any;
+  const resumeDraft = (() => {}) as any;
+  const removeVault = (() => {}) as any;
+  const loading = false;
   const { authedName, signOut } = useAuth();
   const router = useRouter();
   const [pasted, setPasted] = useState("");
@@ -93,17 +100,17 @@ export function HomeScreen() {
   };
 
   const isVaultFounder = (vaultId: string) =>
-    state.vaults.find((vault) => vault.id === vaultId)?.stakeholders.find(
-      (stakeholder) => stakeholder.id === state.vaults.find((vault) => vault.id === vaultId)?.youId,
+    state.vaults.find((vault: any) => vault.id === vaultId)?.stakeholders.find(
+      (stakeholder: any) => stakeholder.id === state.vaults.find((vault: any) => vault.id === vaultId)?.youId,
     )?.isFounder ?? false;
 
   // Sort vaults dynamically so recently added or updated are at the top (reversed)
   const activeVaults = state.vaults
-    .filter((v) => v.status !== "draft")
-    .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
+    .filter((v: any) => v.status !== "draft")
+    .sort((a: any, b: any) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
   const draftVaults = state.vaults
-    .filter((v) => v.status === "draft")
-    .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
+    .filter((v: any) => v.status === "draft")
+    .sort((a: any, b: any) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
 
   const handleResumeDraft = (v: any) => {
     resumeDraft(v);
@@ -153,7 +160,7 @@ export function HomeScreen() {
               </div>
             ) : (
               <div className="border hairline-strong bg-card divide-y hairline">
-                {activeVaults.map((v) => (
+                {activeVaults.map((v: any) => (
                   <div
                     key={v.id}
                     role="button"
@@ -180,7 +187,7 @@ export function HomeScreen() {
                       </p>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      {v.stakeholders.map((s) => (
+                      {v.stakeholders.map((s: any) => (
                         <KeyIcon
                           key={s.id}
                           filled
@@ -261,7 +268,7 @@ export function HomeScreen() {
               <p className="engraved">Pending Setup</p>
               <h2 className="serif text-xl text-ink mt-1">Draft vaults in progress</h2>
               <div className="mt-4 border hairline-strong bg-card divide-y hairline">
-                {draftVaults.map((v) => (
+                {draftVaults.map((v: any) => (
                   <div
                     key={v.id}
                     className="w-full flex items-center justify-between px-6 py-4"

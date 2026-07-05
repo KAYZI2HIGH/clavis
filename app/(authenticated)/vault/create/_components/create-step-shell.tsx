@@ -4,7 +4,8 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { InputStyles } from "@/components/shared/input-styles";
 import { Wordmark } from "@/components/shared/wordmark";
-import { useVault } from "@/hooks/use-vault";
+// import { useVault } from "@/hooks/use-vault";
+// TODO: Batch 4 - Replace with URL-based / React Query dynamic draft state validation
 
 export function CreateStepShell({
   step,
@@ -40,7 +41,8 @@ export function CreateStepShell({
 }
 
 export function RequireDraft({ children }: { children: React.ReactNode }) {
-  const { state } = useVault();
+  // const { state } = useVault();
+  const state = { draft: { name: "" } } as any;
   const router = useRouter();
 
   useEffect(() => {

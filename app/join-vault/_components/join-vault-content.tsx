@@ -6,7 +6,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Wordmark } from "@/components/shared/wordmark";
 import { useAuth } from "@/hooks/use-auth";
-import { useVault } from "@/hooks/use-vault";
+// import { useVault } from "@/hooks/use-vault";
+// TODO: Batch 4 - Replace with URL-based React Query query invalidation
 
 type InviteData = {
   invite: { id: string; token: string; status: string };
@@ -25,7 +26,8 @@ export function JoinVaultContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
   const { authedUserId, authedName, authedPhone } = useAuth();
-  const { reloadVaults } = useVault();
+  // const { reloadVaults } = useVault();
+  const reloadVaults = (() => {}) as any;
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);

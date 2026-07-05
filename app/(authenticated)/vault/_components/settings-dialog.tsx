@@ -4,11 +4,13 @@ import { useEffect, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { InputStyles } from "@/components/shared/input-styles";
 import { KeyIcon } from "@/components/shared/key-icon";
-import { useVault } from "@/hooks/use-vault";
+// import { useVault } from "@/hooks/use-vault";
+// TODO: Batch 4 - Replace with URL-based / React Query settings actions
 import type { PendingJoin, Vault } from "@/lib/types";
 
 function QuorumEditor({ vault }: { vault: Vault }) {
-  const { setQuorum } = useVault();
+  // const { setQuorum } = useVault();
+  const setQuorum = (() => {}) as any;
   const [draft, setDraft] = useState(vault.quorum);
   const [confirm, setConfirm] = useState(false);
   const total = vault.stakeholders.length;
@@ -105,7 +107,9 @@ function QuorumEditor({ vault }: { vault: Vault }) {
 }
 
 function PendingJoinRow({ pj }: { pj: PendingJoin }) {
-  const { confirmPendingJoin, rejectPendingJoin } = useVault();
+  // const { confirmPendingJoin, rejectPendingJoin } = useVault();
+  const confirmPendingJoin = (() => {}) as any;
+  const rejectPendingJoin = (() => {}) as any;
   return (
     <div className="flex items-center gap-3 px-4 py-3">
       <div
@@ -135,7 +139,9 @@ function PendingJoinRow({ pj }: { pj: PendingJoin }) {
 }
 
 function SettingsInvite({ vault }: { vault: Vault }) {
-  const { createLinkInvitation, addEmailInviteToActive } = useVault();
+  // const { createLinkInvitation, addEmailInviteToActive } = useVault();
+  const createLinkInvitation = (() => ({})) as any;
+  const addEmailInviteToActive = (() => {}) as any;
   const [method, setMethod] = useState<"link" | "email">("link");
   const [token, setToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -311,7 +317,8 @@ export function SettingsDialog({
   open: boolean;
   onOpenChange: (b: boolean) => void;
 }) {
-  const { resetDemo } = useVault();
+  // const { resetDemo } = useVault();
+  const resetDemo = (() => {}) as any;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

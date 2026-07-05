@@ -1,7 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import { toast } from "sonner";
-import { useVault } from "@/hooks/use-vault";
+// import { useVault } from "@/hooks/use-vault";
+// TODO: Batch 4 - Replace with URL-based React Query query invalidation
 
 export type RequestPayoutPayload = {
   recipientName: string;
@@ -14,7 +15,8 @@ export type RequestPayoutPayload = {
 
 export function useRequestPayoutMutation(vaultId: string) {
   const qc = useQueryClient();
-  const { reloadVaults } = useVault();
+  // const { reloadVaults } = useVault();
+  const reloadVaults = (() => {}) as any;
   return useMutation({
     mutationFn: async (payload: RequestPayoutPayload) => {
       const res = await fetch(

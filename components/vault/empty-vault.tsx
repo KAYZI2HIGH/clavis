@@ -1,10 +1,12 @@
 "use client";
 
 import type { Vault } from "@/lib/types";
-import { useVault } from "@/hooks/use-vault";
+// import { useVault } from "@/hooks/use-vault";
+// TODO: Batch 4 - Replace with URL-based / React Query dynamic state triggers
 
 export function EmptyVault({ vault }: { vault: Vault }) {
-  const { fundVault } = useVault();
+  // const { fundVault } = useVault();
+  const fundVault = (() => {}) as any;
 
   return (
     <div className="max-w-3xl mx-auto pt-20 pb-16">

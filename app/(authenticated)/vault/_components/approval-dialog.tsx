@@ -8,29 +8,31 @@
   import { Field } from "@/components/shared/field";
   import { InputStyles } from "@/components/shared/input-styles";
   import { KeyArt } from "@/components/shared/key-art";
-  import { useVault } from "@/hooks/use-vault";
+  // import { useVault } from "@/hooks/use-vault";
+  // TODO: Batch 4 - Replace with URL-based active vault stakeholder query state
   import { formatNGN } from "@/lib/format";
   import type { Vault } from "@/lib/types";
   import { Loader2 } from "lucide-react";
-
-import { useApproveMutation } from "@/hooks/use-approve-mutation";
-import { useRejectMutation } from "@/hooks/use-reject-mutation";
-
-export function ApprovalDialog({
-  vault,
-  txId,
-  onClose,
-}: {
-  vault: Vault;
-  txId: string | null;
-  onClose: () => void;
-}) {
-  const { state } = useVault();
-  const approveMutation = useApproveMutation(vault.id);
-  const rejectMutation = useRejectMutation(vault.id);
-
-  const tx = vault.transactions.find((t) => t.id === txId) ?? null;
-  const current = state.currentPartner;
+  
+  import { useApproveMutation } from "@/hooks/use-approve-mutation";
+  import { useRejectMutation } from "@/hooks/use-reject-mutation";
+  
+  export function ApprovalDialog({
+    vault,
+    txId,
+    onClose,
+  }: {
+    vault: Vault;
+    txId: string | null;
+    onClose: () => void;
+  }) {
+    // const { state } = useVault();
+    const state = { currentPartner: "" } as any;
+    const approveMutation = useApproveMutation(vault.id);
+    const rejectMutation = useRejectMutation(vault.id);
+  
+    const tx = vault.transactions.find((t) => t.id === txId) ?? null;
+    const current = state.currentPartner;
   const [turning, setTurning] = useState(false);
   const [done, setDone] = useState(false);
   const [declineMode, setDeclineMode] = useState(false);

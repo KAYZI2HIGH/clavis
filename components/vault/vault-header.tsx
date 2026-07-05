@@ -4,7 +4,8 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { useVault } from "@/hooks/use-vault";
+// import { useVault } from "@/hooks/use-vault";
+// TODO: Batch 4 - Replace with URL-based / React Query dynamic state logic
 import { formatNGN } from "@/lib/format";
 import type { Vault } from "@/lib/types";
 import IdentitySwitcher from "./profile";
@@ -23,7 +24,9 @@ export function VaultHeader({
 }) {
   const router = useRouter();
   const [copied, setCopied] = useState(false);
-  const { state, reloadVaults } = useVault();
+  // const { state, reloadVaults } = useVault();
+  const state = { currentPartner: "" } as any;
+  const reloadVaults = (() => Promise.resolve()) as any;
   const current = state.currentPartner;
 
   const retryVA = useRetryVAMutation(vault.id);

@@ -1,7 +1,8 @@
 "use client";
 
 import type { Transaction, Vault } from "@/lib/types";
-import { useVault } from "@/hooks/use-vault";
+// import { useVault } from "@/hooks/use-vault";
+// TODO: Batch 4 - Replace with URL-based / React Query dynamic state logic
 import { formatTime, formatNGN } from "@/lib/format";
 import { KeyIcon } from "@/components/shared/key-icon";
 import { StatusPill } from "@/components/shared/status-pill";
@@ -45,7 +46,8 @@ export function TransactionsList({
   vault: Vault;
   onOpen: (id: string) => void;
 }) {
-  const { state } = useVault();
+  // const { state } = useVault();
+  const state = { currentPartner: "" } as any;
   const current = state.currentPartner;
 
   const pendingMine = vault.transactions.filter(

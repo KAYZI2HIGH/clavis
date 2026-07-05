@@ -2,10 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import type { Vault } from "@/lib/types";
-import { useVault } from "@/hooks/use-vault";
+// import { useVault } from "@/hooks/use-vault";
+// TODO: Batch 4 - Replace with URL-based / React Query dynamic state logic
 
 export function VaultSwitcher({ vault }: { vault: Vault }) {
-  const { leaveVault } = useVault();
+  // const { leaveVault } = useVault();
+  const leaveVault = (() => {}) as any;
   const router = useRouter();
 
   const handleLeave = () => {

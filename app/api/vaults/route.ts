@@ -133,216 +133,45 @@ export async function POST(request: Request) {
   });
 }
 
-/**
- * GET /api/vaults
- * Returns all ACTIVE vaults the current user is a stakeholder of.
- */
 export async function GET() {
   const session = await auth();
   if (!session?.user) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return Response.json(
+      { error: "Unauthorized" },
+      { status: 401 }
+    );
   }
 
-  const email = session.user.email;
-  const phone = session.user.phone;
-
-  if (!email && !phone) {
-    return Response.json({ vaults: [] });
-  }
-
-  let orCondition = "";
-  if (email) orCondition += `email.eq.${email}`;
-  if (phone) {
-    if (orCondition) orCondition += ",";
-    orCondition += `phone.eq.${phone}`;
-  }
-
-  const { data: shRows, error: shError } = await getServiceClient()
+  const { data: memberships, error } = await getServiceClient()
     .from("stakeholders")
-    .select("vault_id")
-    .or(orCondition);
+    .select(`
+      id,
+      is_founder,
+      vault_id,
+      vaults (
+        id,
+        name,
+        quorum,
+        balance_kobo,
+        funding_account,
+        nomba_virtual_account_number,
+        nomba_virtual_account_bank,
+        founder_id,
+        created_at
+      )
+    `)
+    .eq("email", session.user.email);
 
-  if (shError) {
-    log({
-      level: "error",
-      event: "vaults_fetch_stakeholders_failed",
-      error: shError.message,
-    });
+  if (error) {
     return Response.json(
-      { error: "Failed to fetch user vaults metadata" },
-      { status: 500 },
+      { error: "Failed to fetch vaults" },
+      { status: 500 }
     );
   }
 
-  const vaultIds = Array.from(
-    new Set(shRows?.map((row) => row.vault_id) ?? []),
-  );
-  if (vaultIds.length === 0) {
-    return Response.json({ vaults: [] });
-  }
+  const vaults = memberships
+    ?.map((m) => m.vaults)
+    .filter(Boolean) ?? [];
 
-  const [
-    vaultsResult,
-    stakeholdersResult,
-    transactionsResult,
-    linkInvitesResult,
-    emailInvitesResult,
-    pendingJoinsResult,
-  ] = await Promise.all([
-    getServiceClient()
-      .from("vaults")
-      .select("*")
-      .in("id", vaultIds)
-      .order("updated_at", { ascending: false }), // Return both active and draft vaults sorted by recently added/updated first
-    getServiceClient()
-      .from("stakeholders")
-      .select("*")
-      .in("vault_id", vaultIds),
-    getServiceClient()
-      .from("transactions")
-      .select("*")
-      .in("vault_id", vaultIds)
-      .order("requested_at", { ascending: false }),
-    getServiceClient()
-      .from("link_invitations")
-      .select("*")
-      .in("vault_id", vaultIds),
-    getServiceClient()
-      .from("email_invites")
-      .select("*")
-      .in("vault_id", vaultIds),
-    getServiceClient()
-      .from("pending_joins")
-      .select("*")
-      .in("vault_id", vaultIds),
-  ]);
-
-  if (vaultsResult.error) {
-    log({
-      level: "error",
-      event: "vaults_fetch_failed",
-      error: vaultsResult.error.message,
-    });
-    return Response.json(
-      { error: "Failed to fetch user vaults" },
-      { status: 500 },
-    );
-  }
-
-  const vaults = vaultsResult.data ?? [];
-  const allStakeholders = stakeholdersResult.data ?? [];
-  const allTransactions = transactionsResult.data ?? [];
-  const allLinkInvites = linkInvitesResult.data ?? [];
-  const allEmailInvites = emailInvitesResult.data ?? [];
-  const allPendingJoins = pendingJoinsResult.data ?? [];
-
-  const transactionIds = allTransactions.map((tx) => tx.id);
-  let allApprovals: { transaction_id: string; stakeholder_id: string }[] = [];
-  if (transactionIds.length > 0) {
-    const { data } = await getServiceClient()
-      .from("transaction_approvals")
-      .select("transaction_id, stakeholder_id")
-      .in("transaction_id", transactionIds);
-    allApprovals = data ?? [];
-  }
-
-  const formattedVaults = vaults.map((v) => {
-    const stakeholdersList = allStakeholders
-      .filter((sh) => sh.vault_id === v.id)
-      .map((sh) => ({
-        id: sh.id,
-        name: sh.name,
-        initials: sh.initials,
-        email: sh.email ?? undefined,
-        phone: sh.phone ?? undefined,
-        isFounder: sh.is_founder,
-      }));
-
-    const myStakeholder = stakeholdersList.find(
-      (sh) => (email && sh.email === email) || (phone && sh.phone === phone),
-    );
-    const youId = myStakeholder?.id ?? v.founder_id ?? "";
-
-    const transactionsList = allTransactions
-      .filter((tx) => tx.vault_id === v.id)
-      .map((tx) => {
-        const approvals = allApprovals
-          .filter((ap) => ap.transaction_id === tx.id)
-          .map((ap) => ap.stakeholder_id);
-        return {
-          id: tx.id,
-          vaultId: tx.vault_id,
-          recipientName: tx.recipient_name,
-          recipientAccount: tx.recipient_account,
-          recipientBankCode: tx.recipient_bank_code ?? "",
-          recipientBankName: getBankName(tx.recipient_bank_code ?? ""),
-          amountKobo: Number(tx.amount_kobo),
-          memo: tx.memo,
-          requestedBy: tx.requested_by ?? "",
-          requestedAt: new Date(tx.requested_at).getTime(),
-          approvals,
-          status: tx.status as "pending" | "sealed" | "settled" | "declined",
-          requiredQuorum: tx.required_quorum,
-          sealedAt: tx.sealed_at ? new Date(tx.sealed_at).getTime() : undefined,
-          settledAt:
-            tx.settled_at ? new Date(tx.settled_at).getTime() : undefined,
-          declinedBy: tx.declined_by ?? undefined,
-          declineReason: tx.decline_reason ?? undefined,
-        };
-      });
-
-    const linkInvitations = allLinkInvites
-      .filter((li) => li.vault_id === v.id)
-      .map((li) => ({
-        id: li.id,
-        token: li.token,
-        placeholder: li.placeholder,
-        invitedBy: li.invited_by,
-        status: li.status as "pending" | "accepted" | "declined",
-        createdAt: new Date(li.created_at).getTime(),
-      }));
-
-    const emailInvites = allEmailInvites
-      .filter((ei) => ei.vault_id === v.id)
-      .map((ei) => ({
-        id: ei.id,
-        name: ei.name,
-        email: ei.email,
-        initials: ei.initials,
-        invitedBy: ei.invited_by,
-        createdAt: new Date(ei.created_at).getTime(),
-        status: ei.status as "pending" | "accepted",
-      }));
-
-    const pendingJoins = allPendingJoins
-      .filter((pj) => pj.vault_id === v.id)
-      .map((pj) => ({
-        id: pj.id,
-        vaultId: pj.vault_id,
-        name: pj.name,
-        initials: pj.initials,
-        viaToken: pj.via_token,
-        requestedAt: new Date(pj.requested_at).getTime(),
-      }));
-
-    return {
-      id: v.id,
-      name: v.name,
-      quorum: v.quorum,
-      status: v.status as "draft" | "active",
-      stakeholders: stakeholdersList,
-      youId,
-      founderId: v.founder_id ?? "",
-      balanceKobo: Number(v.balance_kobo),
-      fundingAccount: v.funding_account || v.nomba_virtual_account_number || "",
-      nombaVirtualAccountBank: v.nomba_virtual_account_bank || undefined,
-      transactions: transactionsList,
-      linkInvitations,
-      pendingJoins,
-      emailInvites,
-      updatedAt: new Date(v.updated_at).getTime(),
-    };
-  });
-
-  return Response.json({ vaults: formattedVaults });
+  return Response.json({ vaults });
 }

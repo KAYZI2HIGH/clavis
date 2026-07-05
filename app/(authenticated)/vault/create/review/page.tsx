@@ -4,14 +4,17 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { KeyIcon } from "@/components/shared/key-icon";
-import { useVault } from "@/hooks/use-vault";
+// import { useVault } from "@/hooks/use-vault";
+// TODO: Batch 4 - Replace with URL-based / React Query dynamic review state
 import { CreateStepShell, RequireDraft } from "../_components/create-step-shell";
 import { Loader2 } from "lucide-react";
 
 type LiveStakeholder = { id: string; name: string; initials: string; isFounder?: boolean; email?: string };
 
 function CreateReviewContent() {
-  const { state, foundVault } = useVault();
+  // const { state, foundVault } = useVault();
+  const state = { draft: { vaultId: "", stakeholders: [], name: "", quorum: 1 } } as any;
+  const foundVault = (() => {}) as any;
   const router = useRouter();
   const draft = state.draft!;
   const [founding, setFounding] = useState(false);

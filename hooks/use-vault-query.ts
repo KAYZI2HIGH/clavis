@@ -2,14 +2,16 @@ import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import type { Vault } from "@/lib/types";
 
-export function useVaultQuery(vaultId: string | null) {
+export function useVaultQuery(vaultId: string) {
   return useQuery({
-    queryKey: queryKeys.vaults.detail(vaultId ?? ""),
+    queryKey: queryKeys.vaults.detail(vaultId),
     queryFn: async () => {
       const res = await fetch(`/api/vaults/${vaultId}`);
       if (!res.ok) throw new Error("Failed to fetch vault");
-      return res.json() as Promise<Vault>;
+      const { vault } = await res.json();
+      return vault as Vault;
     },
     enabled: !!vaultId,
+    staleTime: 1000 * 30,
   });
 }

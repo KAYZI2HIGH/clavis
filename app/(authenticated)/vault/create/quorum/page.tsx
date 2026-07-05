@@ -3,11 +3,14 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { KeyIcon } from "@/components/shared/key-icon";
-import { useVault } from "@/hooks/use-vault";
+// import { useVault } from "@/hooks/use-vault";
+// TODO: Batch 4 - Replace with URL-based / React Query dynamic state creation
 import { CreateStepShell, RequireDraft } from "../_components/create-step-shell";
 
 function CreateQuorumContent() {
-  const { state, setDraftQuorum } = useVault();
+  // const { state, setDraftQuorum } = useVault();
+  const state = { draft: { vaultId: "", stakeholders: [], quorum: 1 } } as any;
+  const setDraftQuorum = (() => {}) as any;
   const router = useRouter();
   const draft = state.draft!;
 

@@ -2,11 +2,16 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useVault } from "@/hooks/use-vault";
+// import { useVault } from "@/hooks/use-vault";
+// TODO: Batch 4 - Replace with URL-based / React Query dynamic state creation
 import { CreateStepShell, RequireDraft } from "../_components/create-step-shell";
 
 function CreateNameContent() {
-  const { state, setDraftName, setDraftMethod, setDraftVaultId } = useVault();
+  // const { state, setDraftName, setDraftMethod, setDraftVaultId } = useVault();
+  const state = { draft: { name: "", method: "link" } } as any;
+  const setDraftName = (() => {}) as any;
+  const setDraftMethod = (() => {}) as any;
+  const setDraftVaultId = (() => {}) as any;
   const router = useRouter();
   const draft = state.draft!;
   const [loading, setLoading] = useState(false);
