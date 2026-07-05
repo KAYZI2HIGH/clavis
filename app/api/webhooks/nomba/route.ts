@@ -124,7 +124,9 @@ async function handleVaultFunded(
     return;
   }
 
-  const balanceResult = await incrementVaultBalanceKobo(vault.id, data.amount);
+  const amountKobo = Math.round(data.amount * 100);
+
+  const balanceResult = await incrementVaultBalanceKobo(vault.id, amountKobo);
   if (!balanceResult.ok) {
     log({
       level: "error",
@@ -142,7 +144,7 @@ async function handleVaultFunded(
     vault_id: vault.id,
     recipient_name: "Vault funding",
     recipient_account: data.accountNumber,
-    amount_kobo: data.amount,
+    amount_kobo: amountKobo,
     memo: "Vault funded",
     narration: "Vault funded",
     requested_by: null,

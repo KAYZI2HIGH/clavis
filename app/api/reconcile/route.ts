@@ -35,8 +35,8 @@ async function reconcileVault(vaultId: string, virtualAccount: string) {
   const orphansCredited: string[] = [];
   const critical: string[] = [];
 
-  // Date range: look back 30 days formatted as YYYY-MM-DD
-  const formatReconDate = (date: Date) => date.toISOString().split("T")[0];
+  // Date range: look back 30 days formatted as YYYY-MM-DDTHH:mm:ss
+  const formatReconDate = (date: Date) => date.toISOString().split(".")[0];
   const dateTo = formatReconDate(new Date(Date.now() + 24 * 60 * 60 * 1000)); // Include tomorrow to prevent timezone edge cases
   const dateFrom = formatReconDate(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
 
@@ -161,10 +161,12 @@ async function reconcileVault(vaultId: string, virtualAccount: string) {
 
     if (!localTx && isCredit && isForThisVault && 
         nombaTx.status?.toUpperCase() === "SUCCESS") {
+      const amountKobo = Math.round(Number(nombaTx.amount) * 100);
+
       // Credit vault balance
       await getServiceClient().rpc("increment_vault_balance", {
         vault_id: vaultId,
-        amount_kobo: nombaTx.amount,
+        amount_kobo: amountKobo,
       });
 
       // Insert transaction record
@@ -172,7 +174,7 @@ async function reconcileVault(vaultId: string, virtualAccount: string) {
         .from("transactions")
         .insert({
           vault_id: vaultId,
-          amount_kobo: nombaTx.amount,
+          amount_kobo: amountKobo,
           status: "settled",
           narration: "Vault funded (reconciled)",
           nomba_tx_ref: ref,

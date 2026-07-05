@@ -25,9 +25,10 @@ export function useVaultRealtime(vaultId: string | null) {
           event: "UPDATE",
           schema: "public",
           table: "vaults",
-          filter: `id=eq.${vaultId}`,
         },
         (payload) => {
+          if (payload.new.id !== vaultId) return;
+
           const newBalance = payload.new.balance_kobo as number;
           const oldBalance = payload.old.balance_kobo as number;
 
@@ -61,15 +62,19 @@ export function useVaultRealtime(vaultId: string | null) {
           event: "INSERT",
           schema: "public",
           table: "transactions",
-          filter: `vault_id=eq.${vaultId}`,
         },
         (payload) => {
+          if (payload.new.vault_id !== vaultId) return;
+
           // Invalidate transactions query
           qc.invalidateQueries({
             queryKey: queryKeys.vaults.detail(vaultId),
           });
           qc.invalidateQueries({
             queryKey: queryKeys.vaults.all,
+          });
+          qc.invalidateQueries({
+            queryKey: queryKeys.vaults.transactions(vaultId),
           });
 
           const status = payload.new.status as string;
@@ -94,9 +99,10 @@ export function useVaultRealtime(vaultId: string | null) {
           event: "UPDATE",
           schema: "public",
           table: "transactions",
-          filter: `vault_id=eq.${vaultId}`,
         },
         (payload) => {
+          if (payload.new.vault_id !== vaultId) return;
+
           const newStatus = payload.new.status as string;
           const oldStatus = payload.old.status as string;
 
@@ -108,6 +114,9 @@ export function useVaultRealtime(vaultId: string | null) {
           });
           qc.invalidateQueries({
             queryKey: queryKeys.vaults.all,
+          });
+          qc.invalidateQueries({
+            queryKey: queryKeys.vaults.transactions(vaultId),
           });
 
           if (newStatus === "settled" && oldStatus === "executing") {
@@ -133,9 +142,10 @@ export function useVaultRealtime(vaultId: string | null) {
           event: "INSERT",
           schema: "public",
           table: "reconciliation_logs",
-          filter: `vault_id=eq.${vaultId}`,
         },
-        () => {
+        (payload) => {
+          if (payload.new.vault_id !== vaultId) return;
+          
           qc.invalidateQueries({ 
             queryKey: ["reconciliation", vaultId] 
           });
