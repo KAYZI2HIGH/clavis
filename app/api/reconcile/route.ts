@@ -82,6 +82,12 @@ async function reconcileVault(vaultId: string, virtualAccount: string) {
       .eq("nomba_tx_ref", ref)
       .maybeSingle();
 
+    // If transaction exists but belongs to a different vault, skip it.
+    // It will be processed when the loop reaches its corresponding vault.
+    if (localTx && localTx.vault_id !== vaultId) {
+      continue;
+    }
+
     // Case 1: Nomba says success, we say executing → settle it
     if (
       nombaTx.status?.toUpperCase() === "SUCCESS" &&
