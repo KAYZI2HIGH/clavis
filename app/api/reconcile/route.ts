@@ -56,7 +56,7 @@ async function reconcileVault(vaultId: string, virtualAccount: string) {
       rawResponse: JSON.stringify(res),
     });
     
-    nombaTransactions = res?.data?.transactions ?? [];
+    nombaTransactions = res?.data?.results ?? res?.data?.transactions ?? [];
   } catch (err) {
     log({
       level: "error",
@@ -71,7 +71,7 @@ async function reconcileVault(vaultId: string, virtualAccount: string) {
   let totalChecked = nombaTransactions.length;
 
   for (const nombaTx of nombaTransactions) {
-    const ref = nombaTx.merchantTxRef;
+    const ref = nombaTx.id || nombaTx.paymentVendorReference || nombaTx.merchantTxRef;
     if (!ref) continue;
 
     // Find matching transaction in our DB
@@ -154,9 +154,9 @@ async function reconcileVault(vaultId: string, virtualAccount: string) {
       nombaTx.transactionType?.toLowerCase() === "vact_transfer";
 
     // Verify this transaction actually belongs to this vault's virtual account
-    // Nomba transactions typically carry the destination virtual account in customerBillerId
+    // Nomba transactions list stores the destination virtual account in recipientAccountNumber
     const isForThisVault = 
-      !nombaTx.customerBillerId || 
+      nombaTx.recipientAccountNumber === virtualAccount ||
       nombaTx.customerBillerId === virtualAccount;
 
     if (!localTx && isCredit && isForThisVault && 
