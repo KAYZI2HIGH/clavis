@@ -191,6 +191,37 @@ async function reconcileVault(vaultId: string, virtualAccount: string) {
         vaultId,
       });
     }
+
+    // Case 5: Exists on both sides but amount mismatch
+    // (e.g. from the previous Naira-vs-Kobo mapping bug)
+    if (localTx && nombaTx.status?.toUpperCase() === "SUCCESS") {
+      const nombaAmountKobo = Math.round(Number(nombaTx.amount) * 100);
+      if (nombaAmountKobo !== localTx.amount_kobo) {
+        const diffKobo = nombaAmountKobo - localTx.amount_kobo;
+
+        // Correct the transaction amount in the database
+        await getServiceClient()
+          .from("transactions")
+          .update({ amount_kobo: nombaAmountKobo })
+          .eq("id", localTx.id);
+
+        // Adjust the vault balance with the difference
+        await getServiceClient().rpc("increment_vault_balance", {
+          vault_id: vaultId,
+          amount_kobo: diffKobo,
+        });
+
+        const msg = `Adjusted ${ref} — fixed amount mismatch of ${(diffKobo / 100).toFixed(2)} Naira, balance restored`;
+        resolved.push(msg);
+        log({
+          level: "info",
+          event: "reconciliation_amount_adjusted",
+          merchantTxRef: ref,
+          vaultId,
+          diffKobo,
+        });
+      }
+    }
   }
 
   // Determine overall status
