@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Wordmark } from "@/components/shared/wordmark";
 import { useAuth } from "@/hooks/use-auth";
+import { useVault } from "@/hooks/use-vault";
 
 type InviteData = {
   invite: { id: string; token: string; status: string };
@@ -24,6 +25,7 @@ export function JoinVaultContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
   const { authedUserId, authedName, authedPhone } = useAuth();
+  const { reloadVaults } = useVault();
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
@@ -121,6 +123,7 @@ export function JoinVaultContent() {
       toast.success("Joined vault successfully!");
 
       if (data?.vault.status === "active") {
+        await reloadVaults();
         router.push("/vault");
       }
     } catch {

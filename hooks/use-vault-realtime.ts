@@ -152,6 +152,21 @@ export function useVaultRealtime(vaultId: string | null) {
         {
           event: "INSERT",
           schema: "public",
+          table: "stakeholders",
+        },
+        (payload) => {
+          if (payload.new.vault_id !== vaultId) return;
+
+          // Sync local context provider reducer state so member list updates
+          reloadVaults();
+        }
+      )
+
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
           table: "reconciliation_logs",
         },
         (payload) => {
