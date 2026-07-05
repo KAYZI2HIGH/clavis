@@ -1,9 +1,11 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import { toast } from "sonner";
+import { useVault } from "@/hooks/use-vault";
 
 export function useRejectMutation(vaultId: string) {
   const qc = useQueryClient();
+  const { reloadVaults } = useVault();
   return useMutation({
     mutationFn: async ({ 
       txId, 
@@ -30,6 +32,7 @@ export function useRejectMutation(vaultId: string) {
       qc.invalidateQueries({ 
         queryKey: queryKeys.vaults.detail(vaultId) 
       });
+      reloadVaults();
       toast.success("Payout declined.");
     },
     onError: (error: Error) => {
