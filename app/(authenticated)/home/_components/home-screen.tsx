@@ -134,7 +134,7 @@ export function HomeScreen() {
 
   const isFounderOfVault = (vault: any) => {
     return vault.stakeholders?.some(
-      (s: any) => s.email === session?.user?.email && s.is_founder
+      (s: any) => s.email === session?.user?.email && s.isFounder
     );
   };
 

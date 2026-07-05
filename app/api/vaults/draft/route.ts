@@ -15,6 +15,7 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
   const name = body.name;
   const vaultId = body.vaultId ?? makeId("v");
+  const method = body.method ?? "link";
 
   if (!name || name.trim().length === 0) {
     return Response.json(
@@ -24,6 +25,7 @@ export async function POST(request: Request) {
   }
 
   const founderId = makeId("sh");
+  const token = method === "link" ? (body.token ?? makeId("tk")) : null;
 
   // Insert draft vault with founder_id null first to avoid foreign key constraints
   const { error: vaultError } = await getServiceClient()
@@ -117,8 +119,40 @@ export async function POST(request: Request) {
 
 
 
+  // If link method is selected, insert the link invitation record
+  if (token) {
+    const { error: tokenError } = await getServiceClient()
+      .from("link_invitations")
+      .insert({
+        id: makeId("li"),
+        vault_id: vaultId,
+        token: token,
+        placeholder: "",
+        invited_by: founderId,
+        status: "pending",
+        created_at: new Date().toISOString(),
+      });
+
+    if (tokenError) {
+      log({
+        level: "error",
+        event: "draft_link_token_insert_failed",
+        vaultId,
+        error: tokenError.message,
+      });
+      // Rollback previous steps
+      await getServiceClient().from("stakeholders").delete().eq("id", founderId);
+      await getServiceClient().from("vaults").delete().eq("id", vaultId);
+      return Response.json(
+        { error: "Failed to create invitation link", details: tokenError.message },
+        { status: 500 }
+      );
+    }
+  }
+
   return Response.json({ 
     vaultId, 
-    founderId 
+    founderId,
+    token
   }, { status: 201 });
 }

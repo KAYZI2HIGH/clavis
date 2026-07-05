@@ -275,14 +275,50 @@ export async function GET(
 
   return Response.json({
     vault: {
-      ...vault,
-      stakeholders: stakeholders ?? [],
+      id: vault.id,
+      name: vault.name,
+      quorum: vault.quorum,
+      status: vault.status,
+      stakeholders: (stakeholders ?? []).map((sh) => ({
+        id: sh.id,
+        name: sh.name,
+        initials: sh.initials,
+        email: sh.email ?? undefined,
+        phone: sh.phone ?? undefined,
+        isFounder: sh.is_founder,
+      })),
       transactions: transactions ?? [],
-      linkInvitations: linkInvitations ?? [],
-      emailInvites: emailInvites ?? [],
-      pendingJoins: pendingJoins ?? [],
+      linkInvitations: (linkInvitations ?? []).map((li) => ({
+        id: li.id,
+        token: li.token,
+        placeholder: li.placeholder,
+        invitedBy: li.invited_by,
+        status: li.status,
+        createdAt: new Date(li.created_at).getTime(),
+      })),
+      emailInvites: (emailInvites ?? []).map((ei) => ({
+        id: ei.id,
+        name: ei.name,
+        email: ei.email,
+        initials: ei.initials,
+        invitedBy: ei.invited_by,
+        createdAt: new Date(ei.created_at).getTime(),
+        status: ei.status,
+      })),
+      pendingJoins: (pendingJoins ?? []).map((pj) => ({
+        id: pj.id,
+        vaultId: pj.vault_id,
+        name: pj.name,
+        initials: pj.initials,
+        viaToken: pj.via_token,
+        requestedAt: new Date(pj.requested_at).getTime(),
+      })),
       youId: membership.id,
       founderId: vault.founder_id,
+      balanceKobo: Number(vault.balance_kobo),
+      fundingAccount: vault.funding_account || vault.nomba_virtual_account_number || "",
+      nombaVirtualAccountBank: vault.nomba_virtual_account_bank || undefined,
+      updatedAt: new Date(vault.updated_at).getTime(),
     }
   });
 }

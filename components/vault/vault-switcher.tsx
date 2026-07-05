@@ -5,32 +5,53 @@ import type { Vault } from "@/lib/types";
 // import { useVault } from "@/hooks/use-vault";
 // TODO: Batch 4 - Replace with URL-based / React Query dynamic state logic
 
-export function VaultSwitcher({ vault }: { vault: Vault }) {
-  // const { leaveVault } = useVault();
-  const leaveVault = (() => {}) as any;
+import { useVaultsQuery } from "@/hooks/use-vaults-query";
+
+interface VaultSwitcherProps {
+  vault: Vault;
+  vaultId: string;
+}
+
+export function VaultSwitcher({ vault, vaultId }: VaultSwitcherProps) {
   const router = useRouter();
+  const { data: vaultsData } = useVaultsQuery();
 
   const handleLeave = () => {
-    leaveVault();
     router.push("/home");
   };
 
+  const vaultsList = vaultsData?.vaults ?? [];
+
   return (
-    <button
-      onClick={handleLeave}
-      className="flex items-center gap-2 hover:bg-secondary/60 px-2 py-1 -mx-2 -my-1 transition-colors"
-      style={{ borderRadius: 2 }}
-      title="Switch vault"
-    >
-      <p className="serif text-lg text-ink leading-none">{vault.name}</p>
-      <svg width="10" height="10" viewBox="0 0 12 12" className="text-ink-faint">
-        <path
-          d="M2 4l4 4 4-4"
-          stroke="currentColor"
-          strokeWidth="1.4"
-          fill="none"
-        />
-      </svg>
-    </button>
+    <div className="relative inline-block text-left">
+      <select
+        value={vaultId}
+        onChange={(e) => {
+          const val = e.target.value;
+          if (val === "leave") {
+            handleLeave();
+          } else {
+            router.push(`/vault/${val}`);
+          }
+        }}
+        className="serif text-lg text-ink leading-none bg-transparent border-0 cursor-pointer focus:outline-none focus:ring-0 pr-6 appearance-none"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%234F4F4F' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+          backgroundPosition: 'right center',
+          backgroundSize: '1.2em 1.2em',
+          backgroundRepeat: 'no-repeat',
+        }}
+      >
+        <option key={vault.id} value={vault.id}>{vault.name}</option>
+        {vaultsList
+          .filter((v: any) => v.id !== vault.id && v.status === "active")
+          .map((v: any) => (
+            <option key={v.id} value={v.id}>
+              {v.name}
+            </option>
+          ))}
+        <option value="leave">← Back to Home</option>
+      </select>
+    </div>
   );
 }

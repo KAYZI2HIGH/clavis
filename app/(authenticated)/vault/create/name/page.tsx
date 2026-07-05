@@ -28,60 +28,61 @@ export default function CreateNamePage() {
     setError(null);
 
     const vaultId = makeId("v");
+    const linkToken = makeId("tk");
 
-    // Optimistically seed React Query cache
-    qc.setQueryData(queryKeys.vaults.detail(vaultId), {
-      id: vaultId,
-      name: name.trim(),
-      quorum: 2,
-      status: "draft",
-      balance_kobo: 0,
-      funding_account: "",
-      stakeholders: [{
-        id: makeId("sh"),
-        name: session?.user?.name ?? "You",
-        email: session?.user?.email ?? "",
-        initials: makeInitials(session?.user?.name ?? "You"),
-        is_founder: true,
-        vault_id: vaultId,
-      }],
-      transactions: [],
-      linkInvitations: [],
-      emailInvites: [],
-      pendingJoins: [],
-      youId: "",
-      founderId: "",
-    });
-
-    // Navigate immediately
-    router.push(`/vault/create/${vaultId}/invite`);
-
-    // Fire API in background
-    fetch("/api/vaults/draft", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: name.trim(), vaultId }),
-    }).then(async (res) => {
-      if (!res.ok) {
-        // Rollback
-        qc.removeQueries({ 
-          queryKey: queryKeys.vaults.detail(vaultId) 
-        });
-        router.push("/vault/create/name");
-        toast.error("Failed to create vault. Try again.");
-      } else {
-        // Confirm cache with real data
-        qc.invalidateQueries({ 
-          queryKey: queryKeys.vaults.detail(vaultId) 
-        });
-      }
-    }).catch(() => {
-      qc.removeQueries({ 
-        queryKey: queryKeys.vaults.detail(vaultId) 
+    try {
+      const res = await fetch("/api/vaults/draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim(), vaultId, method, token: linkToken }),
       });
-      router.push("/vault/create/name");
-      toast.error("Failed to create vault. Try again.");
-    });
+
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        setError(payload.error ?? "Failed to create vault. Please try again.");
+        setLoading(false);
+        return;
+      }
+
+      const data = await res.json();
+      
+      // Update cache with the returned draft details
+      qc.setQueryData(queryKeys.vaults.detail(vaultId), {
+        id: vaultId,
+        name: name.trim(),
+        quorum: 2,
+        status: "draft",
+        balance_kobo: 0,
+        funding_account: "",
+        stakeholders: [{
+          id: data.founderId,
+          name: session?.user?.name ?? "You",
+          email: session?.user?.email ?? "",
+          initials: makeInitials(session?.user?.name ?? "You"),
+          is_founder: true,
+          vault_id: vaultId,
+        }],
+        transactions: [],
+        linkInvitations: method === "link" ? [{
+          id: makeId("li"),
+          token: data.token ?? linkToken,
+          placeholder: "",
+          invitedBy: data.founderId,
+          status: "pending",
+          createdAt: Date.now(),
+        }] : [],
+        emailInvites: [],
+        pendingJoins: [],
+        youId: data.founderId,
+        founderId: data.founderId,
+      });
+
+      // Navigate to invite step
+      router.push(`/vault/create/${vaultId}/invite`);
+    } catch {
+      setError("Network error. Please try again.");
+      setLoading(false);
+    }
   };
 
   return (

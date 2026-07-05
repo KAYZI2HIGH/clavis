@@ -4,6 +4,8 @@ import { toast } from "sonner";
 // import { useVault } from "@/hooks/use-vault";
 // TODO: Batch 4 - Replace with URL-based React Query query invalidation
 
+import type { Vault } from "@/lib/types";
+
 export type RequestPayoutPayload = {
   recipientName: string;
   recipientAccount: string;
@@ -15,8 +17,6 @@ export type RequestPayoutPayload = {
 
 export function useRequestPayoutMutation(vaultId: string) {
   const qc = useQueryClient();
-  // const { reloadVaults } = useVault();
-  const reloadVaults = (() => {}) as any;
   return useMutation({
     mutationFn: async (payload: RequestPayoutPayload) => {
       const res = await fetch(
@@ -40,7 +40,6 @@ export function useRequestPayoutMutation(vaultId: string) {
       qc.invalidateQueries({ 
         queryKey: queryKeys.vaults.detail(vaultId) 
       });
-      reloadVaults();
       toast.success("Payout request submitted.");
     },
     onError: (error: Error) => {

@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import type { Vault } from "@/lib/types";
 
-export function useVaultQuery(vaultId: string) {
+export function useVaultQuery(vaultId: string, options?: { refetchInterval?: number }) {
   return useQuery({
     queryKey: queryKeys.vaults.detail(vaultId),
     queryFn: async () => {
@@ -12,6 +12,7 @@ export function useVaultQuery(vaultId: string) {
       return vault as Vault;
     },
     enabled: !!vaultId,
-    staleTime: 1000 * 30,
+    staleTime: options?.refetchInterval ? 0 : 1000 * 30,
+    refetchInterval: options?.refetchInterval,
   });
 }

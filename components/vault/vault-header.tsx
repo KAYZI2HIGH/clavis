@@ -17,19 +17,18 @@ import Profile from "./profile";
 
 export function VaultHeader({
   vault,
+  vaultId,
   onSettings,
 }: {
   vault: Vault;
+  vaultId: string;
   onSettings: () => void;
 }) {
   const router = useRouter();
   const [copied, setCopied] = useState(false);
-  // const { state, reloadVaults } = useVault();
-  const state = { currentPartner: "" } as any;
-  const reloadVaults = (() => Promise.resolve()) as any;
-  const current = state.currentPartner;
+  const current = vault.youId;
 
-  const retryVA = useRetryVAMutation(vault.id);
+  const retryVA = useRetryVAMutation(vaultId);
 
   // Determine if the current partner is the founder
   const isFounder = vault.stakeholders.find((s) => s.id === current)?.isFounder ?? false;
@@ -37,8 +36,6 @@ export function VaultHeader({
   const handleRetryVA = async () => {
     try {
       await retryVA.mutateAsync();
-      // Optimistically reload the vaults data globally to keep lists synced
-      await reloadVaults().catch(() => {});
       router.refresh();
     } catch {
       // Toast notifications are already handled inside the hook onError
@@ -90,7 +87,7 @@ export function VaultHeader({
             </svg>
           </div>
           <div>
-            <VaultSwitcher vault={vault} />
+            <VaultSwitcher vault={vault} vaultId={vaultId} />
             <p className="engraved mt-1">
               Partnership Vault · {vault.quorum} of {vault.stakeholders.length}{" "}
               quorum

@@ -6,13 +6,9 @@ import { toast } from "sonner";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { queryKeys } from "@/lib/query-keys";
 import { formatNGN } from "@/lib/format";
-// import { useVault } from "@/hooks/use-vault";
-// TODO: Batch 4 - Replace with URL-based / React Query query invalidation callbacks
 
 export function useVaultRealtime(vaultId: string | null) {
   const qc = useQueryClient();
-  // const { reloadVaults } = useVault();
-  const reloadVaults = (() => {}) as any;
 
   useEffect(() => {
     if (!vaultId) return;
@@ -43,9 +39,6 @@ export function useVaultRealtime(vaultId: string | null) {
           qc.invalidateQueries({
             queryKey: queryKeys.vaults.all,
           });
-
-          // Sync local context provider reducer state
-          reloadVaults();
 
           // Only show toast if balance increased 
           // (incoming fund, not a deduction)
@@ -84,9 +77,6 @@ export function useVaultRealtime(vaultId: string | null) {
             queryKey: queryKeys.vaults.transactions(vaultId),
           });
 
-          // Sync local context provider reducer state
-          reloadVaults();
-
           const status = payload.new.status as string;
           const narration = payload.new.narration as string;
 
@@ -94,8 +84,6 @@ export function useVaultRealtime(vaultId: string | null) {
             status === "settled" &&
             narration === "Vault funded"
           ) {
-            // Balance toast already shown above via vault UPDATE
-            // No duplicate toast here
             return;
           }
         }
@@ -129,9 +117,6 @@ export function useVaultRealtime(vaultId: string | null) {
             queryKey: queryKeys.vaults.transactions(vaultId),
           });
 
-          // Sync local context provider reducer state
-          reloadVaults();
-
           if (newStatus === "settled" && oldStatus === "executing") {
             toast.success("Payout settled.", {
               duration: 5000,
@@ -159,8 +144,9 @@ export function useVaultRealtime(vaultId: string | null) {
         (payload) => {
           if (payload.new.vault_id !== vaultId) return;
 
-          // Sync local context provider reducer state so member list updates
-          reloadVaults();
+          qc.invalidateQueries({
+            queryKey: queryKeys.vaults.detail(vaultId),
+          });
         }
       )
 
@@ -172,8 +158,9 @@ export function useVaultRealtime(vaultId: string | null) {
           table: "transaction_approvals",
         },
         () => {
-          // Sync local context provider reducer state so approval key counts update in real-time
-          reloadVaults();
+          qc.invalidateQueries({
+            queryKey: queryKeys.vaults.detail(vaultId),
+          });
         }
       )
 
@@ -190,9 +177,6 @@ export function useVaultRealtime(vaultId: string | null) {
           qc.invalidateQueries({ 
             queryKey: ["reconciliation", vaultId] 
           });
-
-          // Sync local context provider reducer state
-          reloadVaults();
         }
       )
 
@@ -211,5 +195,5 @@ export function useVaultRealtime(vaultId: string | null) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [vaultId, qc, reloadVaults]);
+  }, [vaultId, qc]);
 }

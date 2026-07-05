@@ -142,7 +142,10 @@ export async function GET() {
     );
   }
 
-  const { data: memberships, error } = await getServiceClient()
+  const email = session.user.email;
+  const phone = session.user.phone;
+
+  const query = getServiceClient()
     .from("stakeholders")
     .select(`
       id,
@@ -157,10 +160,28 @@ export async function GET() {
         nomba_virtual_account_number,
         nomba_virtual_account_bank,
         founder_id,
-        created_at
+        status,
+        created_at,
+        updated_at,
+        stakeholders!stakeholders_vault_id_fkey (
+          id,
+          name,
+          email,
+          phone,
+          is_founder
+        )
       )
-    `)
-    .eq("email", session.user.email);
+    `);
+
+  const { data: memberships, error } = await (
+    email && phone
+      ? query.or(`email.eq.${email},phone.eq.${phone}`)
+      : email
+      ? query.eq("email", email)
+      : phone
+      ? query.eq("phone", phone)
+      : query.none()
+  );
 
   if (error) {
     console.error("[api/vaults GET] Error fetching vaults:", error);
@@ -171,7 +192,31 @@ export async function GET() {
   }
 
   const vaults = memberships
-    ?.map((m: any) => m.vaults)
+    ?.map((m: any) => {
+      const v = m.vaults || m.vaults_stakeholders_vault_id_fkey || m["vaults!stakeholders_vault_id_fkey"];
+      if (!v) return null;
+      return {
+        id: v.id,
+        name: v.name,
+        quorum: v.quorum,
+        balanceKobo: Number(v.balance_kobo),
+        fundingAccount: v.funding_account,
+        nombaVirtualAccountNumber: v.nomba_virtual_account_number,
+        nombaVirtualAccountBank: v.nomba_virtual_account_bank,
+        founderId: v.founder_id,
+        status: v.status,
+        createdAt: new Date(v.created_at).getTime(),
+        updatedAt: new Date(v.updated_at).getTime(),
+        stakeholders: ((v.stakeholders || v.stakeholders_stakeholders_vault_id_fkey || v["stakeholders!stakeholders_vault_id_fkey"]) ?? []).map((sh: any) => ({
+          id: sh.id,
+          name: sh.name,
+          email: sh.email,
+          phone: sh.phone,
+          isFounder: sh.is_founder,
+        })),
+        youId: m.id,
+      };
+    })
     .filter(Boolean) ?? [];
 
   return Response.json({ vaults });

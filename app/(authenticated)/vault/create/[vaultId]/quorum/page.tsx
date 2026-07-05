@@ -15,7 +15,7 @@ function CreateQuorumContent({ vaultId }: { vaultId: string }) {
   const qc = useQueryClient();
   const { data: vault, isLoading } = useVaultQuery(vaultId);
 
-  const [quorum, setQuorum] = useState(2);
+  const [quorum, setQuorum] = useState(1);
 
   useEffect(() => {
     if (vault?.quorum) {
@@ -63,39 +63,41 @@ function CreateQuorumContent({ vaultId }: { vaultId: string }) {
 
   return (
     <CreateStepShell step={3} onBack={() => router.push(`/vault/create/${vaultId}/invite`)}>
-      <p className="engraved">Quorum</p>
+      <p className="engraved">Quorum rule</p>
       <h1 className="serif text-3xl text-ink mt-2 leading-tight">
-        Quorum requirement
+        How many keys does it take to unlock a payout?
       </h1>
-      <p className="text-sm text-ink-muted mt-2">
-        How many keys are required to approve any transfer?
-      </p>
-
-      <div className="mt-8 flex items-center justify-between border hairline-strong bg-card p-6">
-        <div>
-          <p className="serif text-4xl text-ink tracking-tight">
-            {q} <span className="text-xl text-ink-muted">of {total}</span>
-          </p>
-          <p className="engraved text-xs text-ink-faint mt-1">
-            Requires {q} partner approvals
-          </p>
+      <div className="mt-12 border hairline-strong bg-card p-8">
+        <div className="flex items-center justify-center gap-4">
+          {Array.from({ length: total }).map((_, i) => (
+            <div key={i} className="key-anim" style={{ opacity: i < q ? 1 : 0.35 }}>
+              <KeyIcon filled={i < q} size={36} />
+            </div>
+          ))}
         </div>
-        <div className="flex gap-2">
+        <div className="mt-8 flex items-center justify-center gap-6">
           <button
-            onClick={() => setQuorum((prev) => Math.max(prev - 1, 1))}
-            className="btn-mech btn-mech-ghost w-10 h-10 flex items-center justify-center text-lg"
+            className="btn-mech btn-mech-ghost"
+            onClick={() => setQuorum(Math.max(1, q - 1))}
+            disabled={q <= 1}
           >
-            -
+            −
           </button>
+          <p className="serif text-4xl text-ink mono" style={{ minWidth: 88, textAlign: "center" }}>
+            {q} <span className="text-ink-faint text-2xl">of {total}</span>
+          </p>
           <button
-            onClick={() => setQuorum((prev) => Math.min(prev + 1, total))}
-            className="btn-mech btn-mech-ghost w-10 h-10 flex items-center justify-center text-lg"
+            className="btn-mech btn-mech-ghost"
+            onClick={() => setQuorum(Math.min(total, q + 1))}
+            disabled={q >= total}
           >
             +
           </button>
         </div>
+        <p className="text-center text-sm text-ink-muted mt-6">
+          Any {q} of {total} partners must approve before a payout is sent.
+        </p>
       </div>
-
       <div className="mt-12 flex justify-end">
         <button
           className="btn-mech btn-mech-ghost"

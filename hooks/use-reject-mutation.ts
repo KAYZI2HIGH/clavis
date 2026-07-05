@@ -4,10 +4,10 @@ import { toast } from "sonner";
 // import { useVault } from "@/hooks/use-vault";
 // TODO: Batch 4 - Replace with URL-based React Query query invalidation
 
+import type { Vault } from "@/lib/types";
+
 export function useRejectMutation(vaultId: string) {
   const qc = useQueryClient();
-  // const { reloadVaults } = useVault();
-  const reloadVaults = (() => {}) as any;
   return useMutation({
     mutationFn: async ({ 
       txId, 
@@ -30,15 +30,38 @@ export function useRejectMutation(vaultId: string) {
       }
       return res.json();
     },
+    onMutate: async (variables) => {
+      await qc.cancelQueries({ queryKey: queryKeys.vaults.detail(vaultId) });
+      const previousData = qc.getQueryData(queryKeys.vaults.detail(vaultId));
+      qc.setQueryData(
+        queryKeys.vaults.detail(vaultId),
+        (old: Vault | undefined) => {
+          if (!old) return old;
+          return {
+            ...old,
+            transactions: old.transactions.map((t) =>
+              t.id === variables.txId
+                ? { ...t, status: "declined" as const }
+                : t
+            ),
+          };
+        }
+      );
+      return { previousData };
+    },
+    onError: (error: Error, variables, context) => {
+      if (context?.previousData) {
+        qc.setQueryData(queryKeys.vaults.detail(vaultId), context.previousData);
+      }
+      toast.error(error.message);
+    },
     onSuccess: () => {
+      toast.success("Payout declined.");
+    },
+    onSettled: () => {
       qc.invalidateQueries({ 
         queryKey: queryKeys.vaults.detail(vaultId) 
       });
-      reloadVaults();
-      toast.success("Payout declined.");
-    },
-    onError: (error: Error) => {
-      toast.error(error.message);
     },
   });
 }

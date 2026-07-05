@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect, useRef } from "react";
 import type { Transaction, Vault } from "@/lib/types";
 // import { useVault } from "@/hooks/use-vault";
 // TODO: Batch 4 - Replace with URL-based / React Query dynamic state logic
@@ -46,9 +47,21 @@ export function TransactionsList({
   vault: Vault;
   onOpen: (id: string) => void;
 }) {
-  // const { state } = useVault();
-  const state = { currentPartner: "" } as any;
-  const current = state.currentPartner;
+  const current = vault.youId;
+  const [justAddedTxId, setJustAddedTxId] = useState<string | null>(null);
+  const prevCountRef = useRef(vault.transactions.length);
+
+  useEffect(() => {
+    if (vault.transactions.length > prevCountRef.current) {
+      const newestTx = vault.transactions[0];
+      if (newestTx) {
+        setJustAddedTxId(newestTx.id);
+        const timer = setTimeout(() => setJustAddedTxId(null), 3000);
+        return () => clearTimeout(timer);
+      }
+    }
+    prevCountRef.current = vault.transactions.length;
+  }, [vault.transactions]);
 
   const pendingMine = vault.transactions.filter(
     (t) => t.status === "pending" && !t.approvals.includes(current),
@@ -57,10 +70,9 @@ export function TransactionsList({
 
   if (vault.transactions.length === 0) {
     return (
-      <div className="border-t hairline py-16 text-center">
-        <p className="engraved text-ink-faint">No transactions yet</p>
-        <p className="text-sm text-ink-muted mt-2">
-          Request a payout to begin the ledger.
+      <div className="px-6 py-12 text-center">
+        <p className="text-sm text-ink-muted">
+          No transactions yet.
         </p>
       </div>
     );
@@ -88,35 +100,40 @@ export function TransactionsList({
           <p className="engraved">Keys</p>
           <p className="engraved text-right">Status</p>
         </div>
-        {rest.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => onOpen(t.id)}
-            className="w-full grid grid-cols-[1fr_140px_140px_120px_120px] px-6 py-4 border-b hairline text-left items-center hover:bg-secondary/60 transition-colors"
-          >
-            <div>
-              <p className="text-sm text-ink">{t.recipientName}</p>
-              <p className="mono text-xs text-ink-faint mt-0.5">
-                {t.id} · {t.memo || "—"}
+        {rest.map((t) => {
+          const isNew = t.id === justAddedTxId;
+          return (
+            <button
+              key={t.id}
+              onClick={() => onOpen(t.id)}
+              className={`w-full grid grid-cols-[1fr_140px_140px_120px_120px] px-6 py-4 border-b hairline text-left items-center hover:bg-secondary/60 transition-colors ${
+                isNew ? "bg-brass-soft/20 transition-all duration-1000" : ""
+              }`}
+            >
+              <div>
+                <p className="text-sm text-ink">{t.recipientName}</p>
+                <p className="mono text-xs text-ink-faint mt-0.5">
+                  {t.id} · {t.memo || "—"}
+                </p>
+              </div>
+              <p className="mono text-sm text-ink text-right">
+                {formatNGN(t.amountKobo)}
               </p>
-            </div>
-            <p className="mono text-sm text-ink text-right">
-              {formatNGN(t.amountKobo)}
-            </p>
-            <p className="text-xs text-ink-muted">{formatTime(t.requestedAt)}</p>
-            <div className="flex items-center gap-1.5">
-              {vault.stakeholders.map((p) => (
-                <KeyIcon key={p.id} filled={t.approvals.includes(p.id)} />
-              ))}
-              <span className="mono text-xs text-ink-muted ml-1">
-                {t.approvals.length}/{t.requiredQuorum}
-              </span>
-            </div>
-            <div className="text-right">
-              <StatusPill status={t.status} />
-            </div>
-          </button>
-        ))}
+              <p className="text-xs text-ink-muted">{formatTime(t.requestedAt)}</p>
+              <div className="flex items-center gap-1.5">
+                {vault.stakeholders.map((p) => (
+                  <KeyIcon key={p.id} filled={t.approvals.includes(p.id)} />
+                ))}
+                <span className="mono text-xs text-ink-muted ml-1">
+                  {t.approvals.length}/{t.requiredQuorum}
+                </span>
+              </div>
+              <div className="text-right">
+                <StatusPill status={t.status} />
+              </div>
+            </button>
+          );
+        })}
       </div>
     </>
   );

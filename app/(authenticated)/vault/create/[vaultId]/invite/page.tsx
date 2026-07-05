@@ -11,7 +11,7 @@ import { CreateStepSkeleton } from "@/components/vault/create-step-skeleton";
 
 function CreateInviteContent({ vaultId }: { vaultId: string }) {
   const router = useRouter();
-  const { data: vault, isLoading } = useVaultQuery(vaultId);
+  const { data: vault, isLoading } = useVaultQuery(vaultId, { refetchInterval: 3000 });
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");

@@ -20,11 +20,17 @@ export async function POST(
   // Confirm founder
   const { data: vault } = await getServiceClient()
     .from("vaults")
-    .select("*, stakeholders(*)")
+    .select("*, stakeholders:stakeholders!stakeholders_vault_id_fkey(*)")
     .eq("id", vaultId)
     .maybeSingle();
 
   if (!vault || vault.status !== "draft") {
+    log({
+      level: "error",
+      event: "vault_found_validation_failed",
+      vaultId,
+      error: !vault ? "Vault row not found" : `Vault status is ${vault.status} (expected draft)`
+    });
     return Response.json(
       { error: "Vault not found or already active" },
       { status: 404 }
