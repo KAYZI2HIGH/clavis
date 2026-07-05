@@ -163,8 +163,9 @@ export async function GET() {
     .eq("email", session.user.email);
 
   if (error) {
+    console.error("[api/vaults GET] Error fetching vaults:", error);
     return Response.json(
-      { error: "Failed to fetch vaults" },
+      { error: "Failed to fetch vaults", details: error.message },
       { status: 500 }
     );
   }
