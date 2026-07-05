@@ -1,6 +1,7 @@
 import { getServiceClient } from "@/lib/supabase/service";
 import { nombaFetch } from "@/lib/nomba/client";
 import { log } from "@/lib/logger";
+import { getNombaSubaccountId } from "@/lib/nomba/env";
 
 // Verify Vercel Cron secret
 export async function GET(request: Request) {
@@ -43,7 +44,7 @@ async function reconcileVault(vaultId: string, virtualAccount: string) {
   let nombaTransactions: any[] = [];
   try {
     const res = await nombaFetch<any>(
-      `/transactions/accounts?dateFrom=${dateFrom}&dateTo=${dateTo}`,
+      `/transactions/accounts/${getNombaSubaccountId()}?dateFrom=${dateFrom}&dateTo=${dateTo}`,
       { method: "GET", merchantTxRef: `recon-${vaultId}` }
     );
     

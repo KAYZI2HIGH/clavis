@@ -2,6 +2,7 @@ import { log } from "@/lib/logger";
 import {
   getNombaApiBaseUrl,
   getNombaAccountId,
+  getNombaSubaccountId,
   getNombaClientId,
   getNombaClientSecret,
   getNombaEnvironment,
