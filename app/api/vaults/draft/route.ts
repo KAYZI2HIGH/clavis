@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { getServiceClient } from "@/lib/supabase/service";
 import { makeId, makeInitials } from "@/lib/vault-utils";
+import { log } from "@/lib/logger";
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
 
   const founderId = makeId("sh");
 
-  // Insert draft vault
+  // Insert draft vault with founder_id null first to avoid foreign key constraints
   const { error: vaultError } = await getServiceClient()
     .from("vaults")
     .insert({
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
       name: name.trim(),
       quorum: 2,
       balance_kobo: 0,
-      founder_id: founderId,
+      founder_id: null,
       funding_account: "",
       status: "draft",
       created_at: new Date().toISOString(),
@@ -40,6 +41,12 @@ export async function POST(request: Request) {
     });
 
   if (vaultError) {
+    log({
+      level: "error",
+      event: "draft_vault_creation_failed",
+      vaultId,
+      error: vaultError.message,
+    });
     return Response.json(
       { error: "Failed to create vault", details: vaultError.message },
       { status: 500 }
@@ -61,6 +68,12 @@ export async function POST(request: Request) {
     });
 
   if (stakeholderError) {
+    log({
+      level: "error",
+      event: "draft_stakeholder_creation_failed",
+      vaultId,
+      error: stakeholderError.message,
+    });
     // Rollback vault
     await getServiceClient()
       .from("vaults")
@@ -72,6 +85,37 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
+
+  // Now update the vault's founder_id with the inserted stakeholder ID
+  const { error: updateError } = await getServiceClient()
+    .from("vaults")
+    .update({ founder_id: founderId })
+    .eq("id", vaultId);
+
+  if (updateError) {
+    log({
+      level: "error",
+      event: "draft_vault_founder_update_failed",
+      vaultId,
+      error: updateError.message,
+    });
+    // Rollback both
+    await getServiceClient()
+      .from("stakeholders")
+      .delete()
+      .eq("id", founderId);
+    await getServiceClient()
+      .from("vaults")
+      .delete()
+      .eq("id", vaultId);
+
+    return Response.json(
+      { error: "Failed to link founder to vault", details: updateError.message },
+      { status: 500 }
+    );
+  }
+
+
 
   return Response.json({ 
     vaultId, 
