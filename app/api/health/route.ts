@@ -87,7 +87,7 @@ export async function GET(request: Request) {
     h1 { font-size: 1.25rem; font-weight: 600; margin: 0 0 0.5rem; }
     p { margin: 0.25rem 0; color: #5c5a55; font-size: 0.95rem; }
     ul { list-style: none; padding: 0; margin: 1.25rem 0 0; text-align: left; font-size: 0.875rem; }
-    li { padding: 0.35rem 0; border-top: 1px solid #ece7de; }
+    li { padding: 0.35rem 0; border-top: 1px solid #ece7de; word-break: break-all; }
   </style>
 </head>
 <body>
@@ -97,6 +97,9 @@ export async function GET(request: Request) {
     <ul>
       <li>Supabase: ${body.supabase}</li>
       <li>Nomba: ${body.nomba}</li>
+      <li>nombaEnv: ${body.nombaEnv}</li>
+      <li>nombaApiBase: ${body.nombaApiBase}</li>
+      <li>nombaEnvVar: ${body.nombaEnvVar}</li>
     </ul>
   </div>
 </body>
