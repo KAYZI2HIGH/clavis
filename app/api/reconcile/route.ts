@@ -2,6 +2,7 @@ import { getServiceClient } from "@/lib/supabase/service";
 import { nombaFetch } from "@/lib/nomba/client";
 import { log } from "@/lib/logger";
 import { getNombaSubaccountId } from "@/lib/nomba/env";
+import { incrementVaultBalanceKobo } from "@/lib/supabase/vault-balance";
 
 // Verify Vercel Cron secret
 export async function GET(request: Request) {
@@ -164,10 +165,7 @@ async function reconcileVault(vaultId: string, virtualAccount: string) {
       const amountKobo = Math.round(Number(nombaTx.amount) * 100);
 
       // Credit vault balance
-      await getServiceClient().rpc("increment_vault_balance", {
-        vault_id: vaultId,
-        amount_kobo: amountKobo,
-      });
+      await incrementVaultBalanceKobo(vaultId, amountKobo);
 
       // Insert transaction record
       await getServiceClient()
@@ -206,10 +204,7 @@ async function reconcileVault(vaultId: string, virtualAccount: string) {
           .eq("id", localTx.id);
 
         // Adjust the vault balance with the difference
-        await getServiceClient().rpc("increment_vault_balance", {
-          vault_id: vaultId,
-          amount_kobo: diffKobo,
-        });
+        await incrementVaultBalanceKobo(vaultId, diffKobo);
 
         const msg = `Adjusted ${ref} — fixed amount mismatch of ${(diffKobo / 100).toFixed(2)} Naira, balance restored`;
         resolved.push(msg);
