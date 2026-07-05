@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { log } from "@/lib/logger";
 import { nombaFetch } from "@/lib/nomba/client";
 import { getServiceClient } from "@/lib/supabase/service";
+import { getNombaSubaccountId } from "@/lib/nomba/env";
 
 type VirtualAccountResponse = {
   code?: string;
@@ -41,14 +42,17 @@ export async function createVirtualAccount({
   const finalAccountName = sanitizedAccountName || "Clavis Vault";
 
   try {
-    const data = await nombaFetch<VirtualAccountResponse>("/accounts/virtual", {
-      method: "POST",
-      merchantTxRef: accountRef,
-      body: {
-        accountRef,
-        accountName: finalAccountName,
-      },
-    });
+    const data = await nombaFetch<VirtualAccountResponse>(
+      `/accounts/virtual/${getNombaSubaccountId()}`,
+      {
+        method: "POST",
+        merchantTxRef: accountRef,
+        body: {
+          accountRef,
+          accountName: finalAccountName,
+        },
+      }
+    );
 
     const accountNumber =
       data.data?.bankAccountNumber ?? data.data?.accountNumber ?? "";
