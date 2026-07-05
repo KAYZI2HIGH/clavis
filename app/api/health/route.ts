@@ -1,4 +1,4 @@
-import { getAccessToken } from "@/lib/nomba/client";
+import { getAccessToken, getNombaApiBase } from "@/lib/nomba/client";
 import { getNombaEnvironment } from "@/lib/nomba/env";
 import { getServiceClient } from "@/lib/supabase/service";
 
@@ -10,6 +10,9 @@ type HealthResponse = {
   supabase: "connected" | "error";
   nomba: "authenticated" | "error";
   environment: "test" | "live";
+  nombaEnv: string;
+  nombaApiBase: string;
+  nombaEnvVar: string;
 };
 
 async function checkSupabase(): Promise<"connected" | "error"> {
@@ -52,6 +55,9 @@ async function buildHealth(): Promise<{
     supabase,
     nomba,
     environment: getNombaEnvironment(),
+    nombaEnv: getNombaEnvironment(),
+    nombaApiBase: getNombaApiBase(),
+    nombaEnvVar: process.env.NOMBA_ENV ?? "not set",
   };
 
   return {

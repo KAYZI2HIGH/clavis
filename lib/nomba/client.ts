@@ -7,7 +7,7 @@ import {
   getNombaEnvironment,
 } from "@/lib/nomba/env";
 
-function getNombaApiBase(): string {
+export function getNombaApiBase(): string {
   const configuredBaseUrl = getNombaApiBaseUrl();
   if (configuredBaseUrl) {
     return `${configuredBaseUrl}/v1`;
