@@ -173,14 +173,16 @@ export async function GET() {
       )
     `);
 
+  if (!email && !phone) {
+    return Response.json({ vaults: [] });
+  }
+
   const { data: memberships, error } = await (
     email && phone
       ? query.or(`email.eq.${email},phone.eq.${phone}`)
       : email
       ? query.eq("email", email)
-      : phone
-      ? query.eq("phone", phone)
-      : query.none()
+      : query.eq("phone", phone!)
   );
 
   if (error) {

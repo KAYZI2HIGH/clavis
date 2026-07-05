@@ -9,7 +9,7 @@ export function useVaultsQuery() {
       const res = await fetch("/api/vaults");
       if (!res.ok) throw new Error("Failed to fetch vaults");
       const { vaults } = await res.json();
-      return vaults as Vault[];
+      return { vaults } as { vaults: Vault[] };
     },
     staleTime: 1000 * 30,
   });

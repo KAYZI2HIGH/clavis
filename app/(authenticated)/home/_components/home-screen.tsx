@@ -33,7 +33,8 @@ import {
 
 export function HomeScreen() {
   const { data: session } = useSession();
-  const { data: vaults, isLoading } = useVaultsQuery();
+  const { data: vaultsData, isLoading } = useVaultsQuery();
+  const vaults = (vaultsData?.vaults ?? []) as any[];
   const qc = useQueryClient();
   const router = useRouter();
   const [pasted, setPasted] = useState("");
@@ -210,7 +211,7 @@ export function HomeScreen() {
                       </p>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      {v.stakeholders?.map((s) => (
+                      {v.stakeholders?.map((s: any) => (
                         <KeyIcon
                           key={s.id}
                           filled
