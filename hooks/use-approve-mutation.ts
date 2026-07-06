@@ -29,17 +29,19 @@ export function useApproveMutation(vaultId: string) {
           queryKeys.vaults.detail(vaultId),
           (old: Vault | undefined) => {
             if (!old) return old;
-            return {
-              ...old,
-              transactions: old.transactions.map((t) =>
-                t.id === variables.txId
-                  ? {
-                      ...t,
-                      approvals: [...(t.approvals ?? []), old.youId],
-                    }
-                  : t
-              ),
-            };
+              return {
+                ...old,
+                transactions: old.transactions.map((t) =>
+                  t.id === variables.txId
+                    ? {
+                        ...t,
+                        approvals: Array.from(
+                          new Set([...(t.approvals ?? []), old.youId])
+                        ),
+                      }
+                    : t
+                ),
+              };
           }
         );
       }
