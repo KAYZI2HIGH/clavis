@@ -206,13 +206,29 @@ export async function GET(
 
   const { vaultId } = await params;
 
-  // Confirm user is a member
-  const { data: membership } = await getServiceClient()
+  const email = session.user.email;
+  const phone = session.user.phone;
+
+  if (!email && !phone) {
+    return Response.json(
+      { error: "Unauthorized: session is missing email and phone" },
+      { status: 401 }
+    );
+  }
+
+  // Confirm user is a member (either via email or phone matching)
+  const query = getServiceClient()
     .from("stakeholders")
     .select("id, is_founder")
-    .eq("vault_id", vaultId)
-    .eq("email", session.user.email)
-    .maybeSingle();
+    .eq("vault_id", vaultId);
+
+  const { data: membership } = await (
+    email && phone
+      ? query.or(`email.eq.${email},phone.eq.${phone}`)
+      : email
+      ? query.eq("email", email)
+      : query.eq("phone", phone!)
+  ).maybeSingle();
 
   if (!membership) {
     return Response.json(
