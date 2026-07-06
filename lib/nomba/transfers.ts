@@ -109,7 +109,7 @@ export async function initiateTransfer({
       method: "POST",
       merchantTxRef,
       body: {
-        amount,
+        amount: amount / 100, // Nomba transfer endpoint expects amount in Naira (base unit)
         bankCode,
         accountNumber,
         accountName: resolvedAccountName,
