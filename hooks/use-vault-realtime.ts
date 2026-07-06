@@ -124,11 +124,11 @@ export function useVaultRealtime(vaultId: string | null) {
             });
           }
 
-          if (newStatus === "failed" && oldStatus === "executing") {
+          if (newStatus === "failed" && (oldStatus === "executing" || oldStatus === "pending")) {
             toast.error("Payout failed.", {
               duration: 8000,
               description:
-                "The transfer was reversed. Vault balance has been refunded.",
+                "The transfer failed. Vault balance has been refunded.",
             });
           }
         }

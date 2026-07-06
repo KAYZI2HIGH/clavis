@@ -171,7 +171,7 @@ export async function POST(request: Request) {
     await incrementVaultBalanceKobo(transaction.vault_id, amountKobo);
     await getServiceClient()
       .from("transactions")
-      .update({ status: "pending" })
+      .update({ status: "failed" })
       .eq("id", transaction.id);
 
     const message =
