@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import { getServiceClient } from "@/lib/supabase/service";
+import { log } from "@/lib/logger";
 
 type RegisterBody = {
   full_name?: string;
@@ -48,7 +49,9 @@ export async function POST(request: Request) {
     .single();
 
   if (error) {
-    console.error("[register] failed to create user", {
+    log({
+      level: "error",
+      event: "register_user_insert_failed",
       error: error.message,
     });
     return Response.json({ error: "Failed to create account" }, { status: 500 });

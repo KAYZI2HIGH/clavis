@@ -389,7 +389,7 @@ export async function POST(request: Request) {
     return new Response("missing headers", { status: 400 });
   }
 
-  let parsed: any;
+  let parsed: unknown;
   try {
     parsed = JSON.parse(rawBody.toString());
   } catch {
@@ -403,18 +403,19 @@ export async function POST(request: Request) {
 
   // Construct the colon-separated signature payload formatted string
   // Format: {event_type}:{requestId}:{userId}:{walletId}:{transactionId}:{type}:{time}:{responseCode}:{timestamp}
-  const data = parsed.data || {};
-  const merchant = data.merchant || {};
-  const transaction = data.transaction || {};
+  const rawObj = parsed as Record<string, unknown>;
+  const data = (rawObj.data ?? {}) as Record<string, unknown>;
+  const merchant = (data.merchant ?? {}) as Record<string, unknown>;
+  const transaction = (data.transaction ?? {}) as Record<string, unknown>;
 
-  const eventType = parsed.event_type || "";
-  const requestId = parsed.requestId || "";
-  const userId = merchant.userId || "";
-  const walletId = merchant.walletId || "";
-  const transactionId = transaction.transactionId || "";
-  const txType = transaction.type || "";
-  const txTime = transaction.time || "";
-  let responseCode = transaction.responseCode || "";
+  const eventType = (rawObj.event_type as string) || "";
+  const requestId = (rawObj.requestId as string) || "";
+  const userId = (merchant.userId as string) || "";
+  const walletId = (merchant.walletId as string) || "";
+  const transactionId = (transaction.transactionId as string) || "";
+  const txType = (transaction.type as string) || "";
+  const txTime = (transaction.time as string) || "";
+  let responseCode = (transaction.responseCode as string) || "";
   if (responseCode === "null") {
     responseCode = "";
   }

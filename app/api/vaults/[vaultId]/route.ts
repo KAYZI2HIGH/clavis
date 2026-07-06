@@ -303,7 +303,27 @@ export async function GET(
         phone: sh.phone ?? undefined,
         isFounder: sh.is_founder,
       })),
-      transactions: (transactions ?? []).map((t: any) => ({
+      transactions: (transactions ?? []).map((t: {
+        id: string;
+        vault_id: string;
+        recipient_name: string;
+        recipient_account: string;
+        recipient_bank_code: string | null;
+        recipient_bank_name: string | null;
+        amount_kobo: number;
+        memo: string | null;
+        status: string;
+        requested_by: string | null;
+        requested_at: string;
+        required_quorum: number | null;
+        sealed_at: string | null;
+        settled_at: string | null;
+        declined_by: string | null;
+        decline_reason: string | null;
+        narration: string | null;
+        nomba_tx_ref: string | null;
+        transaction_approvals: { id: string; stakeholder_id: string; approved_at: string }[];
+      }) => ({
         id: t.id,
         vaultId: t.vault_id,
         recipientName: t.recipient_name,
@@ -322,7 +342,7 @@ export async function GET(
         declineReason: t.decline_reason ?? undefined,
         narration: t.narration ?? undefined,
         nombaTxRef: t.nomba_tx_ref ?? undefined,
-        approvals: (t.transaction_approvals ?? []).map((ta: any) => ta.stakeholder_id),
+        approvals: (t.transaction_approvals ?? []).map((ta: { stakeholder_id: string }) => ta.stakeholder_id),
       })),
       linkInvitations: (linkInvitations ?? []).map((li) => ({
         id: li.id,

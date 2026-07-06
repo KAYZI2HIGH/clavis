@@ -34,7 +34,7 @@ function CreateQuorumContent({ vaultId }: { vaultId: string }) {
     // Seeding React Query cache optimistically
     qc.setQueryData(
       queryKeys.vaults.detail(vaultId),
-      (old: any) => old ? { ...old, quorum } : old
+      (old: Record<string, unknown> | undefined) => old ? { ...old, quorum } : old
     );
     router.push(`/vault/create/${vaultId}/review`);
 

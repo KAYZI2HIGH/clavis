@@ -4,10 +4,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 import { Wordmark } from "@/components/shared/wordmark";
 import { useAuth } from "@/hooks/use-auth";
-// import { useVault } from "@/hooks/use-vault";
-// TODO: Batch 4 - Replace with URL-based React Query query invalidation
+import { queryKeys } from "@/lib/query-keys";
 
 type InviteData = {
   invite: { id: string; token: string; status: string };
@@ -26,8 +26,7 @@ export function JoinVaultContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
   const { authedUserId, authedName, authedPhone } = useAuth();
-  // const { reloadVaults } = useVault();
-  const reloadVaults = (() => {}) as any;
+  const qc = useQueryClient();
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
@@ -72,12 +71,12 @@ export function JoinVaultContent() {
           
           // If vault becomes active and user is already a stakeholder (or just joined), redirect to dashboard
           const userAlreadyJoined = json.vault.stakeholders.some(
-            (s: any) =>
+            (s: { name: string; phone?: string }) =>
               s.name.toLowerCase() === authedName?.toLowerCase() ||
               (s.phone && authedPhone && s.phone === authedPhone)
           );
           if (json.vault.status === "active" && (submitted || userAlreadyJoined)) {
-            router.push("/vault");
+            router.push(`/vault/${json.vault.id}`);
           }
         }
 
@@ -125,8 +124,8 @@ export function JoinVaultContent() {
       toast.success("Joined vault successfully!");
 
       if (data?.vault.status === "active") {
-        await reloadVaults();
-        router.push("/vault");
+        qc.invalidateQueries({ queryKey: queryKeys.vaults.all });
+        router.push(`/vault/${data.vault.id}`);
       }
     } catch {
       toast.error("Network error. Please try again.");

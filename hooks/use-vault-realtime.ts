@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { queryKeys } from "@/lib/query-keys";
 import { formatNGN } from "@/lib/format";
+import { log } from "@/lib/logger";
 
 export function useVaultRealtime(vaultId: string | null) {
   const qc = useQueryClient();
@@ -182,12 +183,18 @@ export function useVaultRealtime(vaultId: string | null) {
 
       .subscribe((status) => {
         if (status === "SUBSCRIBED") {
-          console.log(`[realtime] subscribed to vault:${vaultId}`);
+          log({
+            level: "info",
+            event: "realtime_subscribed",
+            vaultId,
+          });
         }
         if (status === "CHANNEL_ERROR") {
-          console.error(
-            `[realtime] channel error for vault:${vaultId}`
-          );
+          log({
+            level: "error",
+            event: "realtime_channel_error",
+            vaultId,
+          });
         }
       });
 

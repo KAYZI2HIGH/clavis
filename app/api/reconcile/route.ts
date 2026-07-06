@@ -4,6 +4,18 @@ import { log } from "@/lib/logger";
 import { getNombaSubaccountId } from "@/lib/nomba/env";
 import { incrementVaultBalanceKobo } from "@/lib/supabase/vault-balance";
 
+type NombaTransaction = {
+  id?: string;
+  paymentVendorReference?: string;
+  merchantTxRef?: string;
+  status?: string;
+  type?: string;
+  transactionType?: string;
+  amount?: number;
+  recipientAccountNumber?: string;
+  customerBillerId?: string;
+};
+
 // Verify Vercel Cron secret
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
@@ -42,9 +54,9 @@ async function reconcileVault(vaultId: string, virtualAccount: string) {
   const dateFrom = formatReconDate(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
 
   // Fetch transactions from Nomba for this period scoping it to our account
-  let nombaTransactions: any[] = [];
+  let nombaTransactions: NombaTransaction[] = [];
   try {
-    const res = await nombaFetch<any>(
+    const res = await nombaFetch<{ data?: { results?: NombaTransaction[]; transactions?: NombaTransaction[] } }>(
       `/transactions/accounts/${getNombaSubaccountId()}?dateFrom=${dateFrom}&dateTo=${dateTo}`,
       { method: "GET", merchantTxRef: `recon-${vaultId}` }
     );

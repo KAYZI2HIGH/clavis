@@ -8,6 +8,7 @@ import { makeInitials } from "@/lib/vault-utils";
 import { CreateStepShell } from "@/app/(authenticated)/vault/create/_components/create-step-shell";
 import { useVaultQuery } from "@/hooks/use-vault-query";
 import { CreateStepSkeleton } from "@/components/vault/create-step-skeleton";
+import type { Stakeholder } from "@/lib/types";
 
 function CreateInviteContent({ vaultId }: { vaultId: string }) {
   const router = useRouter();
@@ -88,7 +89,7 @@ function CreateInviteContent({ vaultId }: { vaultId: string }) {
               )}
             </p>
             <div className="border hairline-strong bg-card divide-y hairline">
-              {vault.stakeholders?.map((sh: any) => (
+              {vault.stakeholders?.map((sh: Stakeholder) => (
                 <div key={sh.id} className="flex items-center gap-3 px-4 py-3">
                   <div className="w-7 h-7 border hairline-strong flex items-center justify-center mono text-[10px] text-ink" style={{ borderRadius: 999 }}>
                     {sh.initials}
@@ -133,7 +134,7 @@ function CreateInviteContent({ vaultId }: { vaultId: string }) {
           <div className="mt-6">
             <p className="engraved mb-3">Key-holders</p>
             <div className="border hairline-strong bg-card divide-y hairline">
-              {vault.stakeholders?.filter((sh: any) => sh.isFounder).map((sh: any) => (
+              {vault.stakeholders?.filter((sh: Stakeholder) => sh.isFounder).map((sh: Stakeholder) => (
                 <div key={sh.id} className="flex items-center gap-3 px-4 py-3">
                   <div className="w-7 h-7 border hairline-strong flex items-center justify-center mono text-[10px] text-ink" style={{ borderRadius: 999 }}>
                     {sh.initials}

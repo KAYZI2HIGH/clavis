@@ -1,11 +1,9 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { InputStyles } from "@/components/shared/input-styles";
 import { Wordmark } from "@/components/shared/wordmark";
-// import { useVault } from "@/hooks/use-vault";
-// TODO: Batch 4 - Replace with URL-based / React Query dynamic draft state validation
 
 export function CreateStepShell({
   step,
@@ -41,14 +39,18 @@ export function CreateStepShell({
 }
 
 export function RequireDraft({ children }: { children: React.ReactNode }) {
-  // const { state } = useVault();
-  const state = { draft: { name: "" } } as any;
   const router = useRouter();
+  const pathname = usePathname();
+
+  // Extract vaultId from the URL path: /vault/create/[vaultId]/...
+  const segments = pathname.split("/");
+  const createIdx = segments.indexOf("create");
+  const vaultId = createIdx >= 0 ? segments[createIdx + 1] : undefined;
 
   useEffect(() => {
-    if (!state.draft) router.replace("/home");
-  }, [state.draft, router]);
+    if (!vaultId) router.replace("/home");
+  }, [vaultId, router]);
 
-  if (!state.draft) return null;
+  if (!vaultId) return null;
   return children;
 }

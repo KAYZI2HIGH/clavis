@@ -187,6 +187,11 @@ export async function GET() {
 
   if (error) {
     console.error("[api/vaults GET] Error fetching vaults:", error);
+    log({
+      level: "error",
+      event: "vaults_list_fetch_failed",
+      error: error.message,
+    });
     return Response.json(
       { error: "Failed to fetch vaults", details: error.message },
       { status: 500 }
@@ -194,22 +199,38 @@ export async function GET() {
   }
 
   const vaults = memberships
-    ?.map((m: any) => {
-      const v = m.vaults || m.vaults_stakeholders_vault_id_fkey || m["vaults!stakeholders_vault_id_fkey"];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ?.map((raw) => {
+      const m = raw as unknown as {
+        id: string;
+        is_founder: boolean;
+        vault_id: string;
+        vaults?: Record<string, unknown>;
+        vaults_stakeholders_vault_id_fkey?: Record<string, unknown>;
+        [key: string]: unknown;
+      };
+      const v = (m.vaults || m.vaults_stakeholders_vault_id_fkey || m["vaults!stakeholders_vault_id_fkey"]) as Record<string, unknown> | undefined;
       if (!v) return null;
+      const nestedStakeholders = (v.stakeholders || v.stakeholders_stakeholders_vault_id_fkey || v["stakeholders!stakeholders_vault_id_fkey"]) as Array<{
+        id: string;
+        name: string;
+        email?: string;
+        phone?: string;
+        is_founder?: boolean;
+      }> | undefined;
       return {
-        id: v.id,
-        name: v.name,
-        quorum: v.quorum,
+        id: v.id as string,
+        name: v.name as string,
+        quorum: v.quorum as number,
         balanceKobo: Number(v.balance_kobo),
-        fundingAccount: v.funding_account,
-        nombaVirtualAccountNumber: v.nomba_virtual_account_number,
-        nombaVirtualAccountBank: v.nomba_virtual_account_bank,
-        founderId: v.founder_id,
-        status: v.status,
-        createdAt: new Date(v.created_at).getTime(),
-        updatedAt: new Date(v.updated_at).getTime(),
-        stakeholders: ((v.stakeholders || v.stakeholders_stakeholders_vault_id_fkey || v["stakeholders!stakeholders_vault_id_fkey"]) ?? []).map((sh: any) => ({
+        fundingAccount: v.funding_account as string,
+        nombaVirtualAccountNumber: v.nomba_virtual_account_number as string | undefined,
+        nombaVirtualAccountBank: v.nomba_virtual_account_bank as string | undefined,
+        founderId: v.founder_id as string,
+        status: v.status as string,
+        createdAt: new Date(v.created_at as string).getTime(),
+        updatedAt: new Date(v.updated_at as string).getTime(),
+        stakeholders: (nestedStakeholders ?? []).map((sh) => ({
           id: sh.id,
           name: sh.name,
           email: sh.email,

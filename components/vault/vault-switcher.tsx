@@ -44,8 +44,8 @@ export function VaultSwitcher({ vault, vaultId }: VaultSwitcherProps) {
       >
         <option key={vault.id} value={vault.id}>{vault.name}</option>
         {vaultsList
-          .filter((v: any) => v.id !== vault.id && v.status === "active")
-          .map((v: any) => (
+          .filter((v: { id: string; status?: string }) => v.id !== vault.id && v.status === "active")
+          .map((v: { id: string; name: string }) => (
             <option key={v.id} value={v.id}>
               {v.name}
             </option>

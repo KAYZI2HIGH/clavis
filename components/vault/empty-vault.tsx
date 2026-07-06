@@ -1,12 +1,22 @@
 "use client";
 
+import { useState } from "react";
+import { toast } from "sonner";
 import type { Vault } from "@/lib/types";
-// import { useVault } from "@/hooks/use-vault";
-// TODO: Batch 4 - Replace with URL-based / React Query dynamic state triggers
 
 export function EmptyVault({ vault }: { vault: Vault }) {
-  // const { fundVault } = useVault();
-  const fundVault = (() => {}) as any;
+  const [copied, setCopied] = useState(false);
+
+  const copyAccountNumber = async () => {
+    try {
+      await navigator.clipboard.writeText(vault.fundingAccount);
+      setCopied(true);
+      toast.success("Account number copied");
+      setTimeout(() => setCopied(false), 1400);
+    } catch {
+      toast.error("Failed to copy");
+    }
+  };
 
   return (
     <div className="max-w-3xl mx-auto pt-20 pb-16">
@@ -31,10 +41,9 @@ export function EmptyVault({ vault }: { vault: Vault }) {
             {vault.stakeholders.length} partner keys.
           </p>
         </div>
-        <div className="px-6 py-3 border-t hairline flex items-center justify-between">
-          <p className="engraved text-ink-faint">Routing 028-441-991</p>
-          <button className="btn-mech btn-mech-ghost" onClick={fundVault}>
-            Simulate incoming deposit
+        <div className="px-6 py-3 border-t hairline flex items-center justify-end">
+          <button className="btn-mech btn-mech-ghost" onClick={copyAccountNumber}>
+            {copied ? "Copied" : "Copy Account Number"}
           </button>
         </div>
       </div>

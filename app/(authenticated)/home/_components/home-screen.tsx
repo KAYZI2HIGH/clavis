@@ -13,6 +13,7 @@ import { useVaultsQuery } from "@/hooks/use-vaults-query";
 import { VaultListSkeleton } from "@/components/vault/vault-list-skeleton";
 import { saveDraft } from "@/lib/draft";
 import { makeId, makeInitials } from "@/lib/vault-utils";
+import type { Stakeholder } from "@/lib/types";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,7 +35,18 @@ import {
 export function HomeScreen() {
   const { data: session } = useSession();
   const { data: vaultsData, isLoading } = useVaultsQuery();
-  const vaults = (vaultsData?.vaults ?? []) as any[];
+  const vaults = (vaultsData?.vaults ?? []) as Array<{
+    id: string;
+    name: string;
+    quorum: number;
+    balanceKobo: number;
+    fundingAccount: string;
+    founderId: string;
+    youId: string;
+    status: string;
+    updatedAt: number;
+    stakeholders: Stakeholder[];
+  }>;
   const qc = useQueryClient();
   const router = useRouter();
   const [pasted, setPasted] = useState("");
@@ -133,9 +145,9 @@ export function HomeScreen() {
     return v?.founderId === v?.youId;
   };
 
-  const isFounderOfVault = (vault: any) => {
+  const isFounderOfVault = (vault: { stakeholders?: Stakeholder[] }) => {
     return vault.stakeholders?.some(
-      (s: any) => s.email === session?.user?.email && s.isFounder
+      (s) => s.email === session?.user?.email && s.isFounder
     );
   };
 
@@ -147,7 +159,7 @@ export function HomeScreen() {
     .filter((v) => v.status === "draft")
     .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
 
-  const handleResumeDraft = (v: any) => {
+  const handleResumeDraft = (v: { id: string }) => {
     router.push(`/vault/create/${v.id}/invite`);
   };
 
@@ -211,7 +223,7 @@ export function HomeScreen() {
                       </p>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      {v.stakeholders?.map((s: any) => (
+                      {v.stakeholders?.map((s) => (
                         <KeyIcon
                           key={s.id}
                           filled

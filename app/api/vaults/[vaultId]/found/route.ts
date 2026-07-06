@@ -41,7 +41,7 @@ export async function POST(
   const phone = session.user.phone;
 
   const isFounder = vault.stakeholders?.some(
-    (s: any) => 
+    (s: { email?: string; phone?: string; is_founder?: boolean }) => 
       ((email && s.email === email) || (phone && s.phone === phone)) && 
       s.is_founder
   );
