@@ -52,10 +52,10 @@ export function VaultHeader({
 
   return (
     <header className="border-b hairline-strong bg-paper">
-      <div className="max-w-6xl mx-auto px-8 py-5 flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="max-w-6xl mx-auto px-4 sm:px-8 py-5 flex items-center justify-between">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <div
-            className="w-7 h-7 border hairline-strong flex items-center justify-center"
+            className="w-7 h-7 border hairline-strong flex items-center justify-center shrink-0"
             style={{ borderRadius: 2 }}
           >
             <svg
@@ -86,15 +86,15 @@ export function VaultHeader({
               />
             </svg>
           </div>
-          <div>
+          <div className="min-w-0">
             <VaultSwitcher vault={vault} vaultId={vaultId} />
-            <p className="engraved mt-1">
+            <p className="engraved mt-1 truncate max-w-[160px] sm:max-w-none">
               Partnership Vault · {vault.quorum} of {vault.stakeholders.length}{" "}
               quorum
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1 sm:gap-3 shrink-0">
           <div className="relative">
             <Profile vault={vault} />
             {pendingForMe > 0 && (
@@ -109,33 +109,35 @@ export function VaultHeader({
             className="engraved text-ink-faint hover:text-ink transition-colors px-2 py-1"
             onClick={onSettings}
           >
-            Settings
+            <span className="hidden sm:inline">Settings</span>
+            <span className="sm:hidden" aria-label="Settings">⚙</span>
           </button>
           <button
             className="engraved text-ink-faint hover:text-ink transition-colors px-2 py-1"
             onClick={handleSignOut}
           >
-            Sign out
+            <span className="hidden sm:inline">Sign out</span>
+            <span className="sm:hidden" aria-label="Sign out">↪</span>
           </button>
         </div>
       </div>
-      <div className="max-w-6xl mx-auto px-8 py-10 flex items-start justify-between gap-10">
+      <div className="max-w-6xl mx-auto px-4 sm:px-8 py-6 sm:py-10 flex flex-col sm:flex-row items-start justify-between gap-6 sm:gap-10">
         <div>
           <p className="engraved mb-3">Vault balance</p>
           <p
-            className="serif text-5xl text-ink tracking-tight"
+            className="serif text-3xl sm:text-5xl text-ink tracking-tight"
             style={{ fontVariantNumeric: "tabular-nums oldstyle-nums" }}
           >
             {formatNGN(vault.balanceKobo)}
           </p>
         </div>
 
-        <div className="hairline mt-6 pt-6">
+        <div className="sm:ml-auto">
           <p className="engraved mb-2">Funding Account</p>
           {vault.fundingAccount ?
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
               <span
-                className="serif text-3xl text-ink tracking-tight"
+                className="serif text-xl sm:text-3xl text-ink tracking-tight break-all sm:break-normal"
                 style={{ fontVariantNumeric: "tabular-nums oldstyle-nums" }}
               >
                 {vault.fundingAccount}
@@ -166,7 +168,7 @@ export function VaultHeader({
                   Account details unavailable.
                 </p>
                 <button
-                  className="btn-mech btn-mech-ghost text-xs mt-2 flex items-center justify-center gap-1.5"
+                  className="btn-mech btn-mech-ghost text-xs mt-2 flex items-center justify-center gap-1.5 w-full sm:w-auto"
                   onClick={handleRetryVA}
                   disabled={retryVA.isPending}
                 >

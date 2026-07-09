@@ -16,21 +16,24 @@ export function CreateStepShell({
 }) {
   return (
     <div className="min-h-screen bg-paper grain flex flex-col">
-      <header className="px-8 py-6 flex items-center justify-between border-b hairline">
-        <div className="flex items-center gap-4">
+      <header className="px-4 sm:px-8 py-6 flex items-center justify-between border-b hairline">
+        <div className="flex items-center gap-2 sm:gap-4 min-w-0">
           <Wordmark size="sm" />
-          <p className="engraved text-ink-faint">
+          <p className="engraved text-ink-faint hidden sm:block">
             Founding a vault · step {step} of 4
+          </p>
+          <p className="engraved text-ink-faint sm:hidden">
+            Step {step}/4
           </p>
         </div>
         <button
-          className="engraved text-ink-faint hover:text-ink transition-colors"
+          className="engraved text-ink-faint hover:text-ink transition-colors shrink-0"
           onClick={onBack}
         >
           Back
         </button>
       </header>
-      <main className="flex-1 flex items-start justify-center px-8 py-14">
+      <main className="flex-1 flex items-start justify-center px-4 sm:px-8 py-14">
         <div className="max-w-xl w-full">{children}</div>
       </main>
       <InputStyles />

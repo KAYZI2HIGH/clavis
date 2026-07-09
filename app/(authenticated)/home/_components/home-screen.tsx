@@ -165,10 +165,10 @@ export function HomeScreen() {
 
   return (
     <div className="min-h-screen bg-paper grain flex flex-col">
-      <header className="px-8 py-6 flex items-center justify-between border-b hairline">
+      <header className="px-4 sm:px-8 py-6 flex items-center justify-between border-b hairline">
         <Wordmark size="sm" />
-        <div className="flex items-center gap-4">
-          <p className="engraved text-ink-faint">
+        <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+          <p className="engraved text-ink-faint truncate hidden sm:block">
             Signed in as {session?.user?.name ?? "you"}
           </p>
           <button
@@ -179,7 +179,7 @@ export function HomeScreen() {
           </button>
         </div>
       </header>
-      <main className="flex-1 flex items-start justify-center px-8 py-16">
+      <main className="flex-1 flex items-start justify-center px-4 sm:px-8 py-16">
         <div className="max-w-2xl w-full">
           <p className="engraved">Your vaults</p>
           <h1 className="serif text-3xl text-ink mt-2 leading-tight">

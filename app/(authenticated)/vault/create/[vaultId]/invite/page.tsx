@@ -171,7 +171,7 @@ function CreateInviteContent({ vaultId }: { vaultId: string }) {
 
       <div className="mt-12 flex justify-end">
         <button
-          className="btn-mech btn-mech-ghost"
+          className="btn-mech btn-mech-ghost w-full sm:w-auto"
           onClick={handleContinue}
         >
           Continue

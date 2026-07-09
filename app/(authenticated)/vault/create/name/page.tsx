@@ -125,7 +125,7 @@ export default function CreateNamePage() {
 
       <div className="mt-12 flex justify-end">
         <button
-          className="btn-mech btn-mech-ghost disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+          className="btn-mech btn-mech-ghost disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 w-full sm:w-auto"
           onClick={handleContinue}
           disabled={!valid || loading}
         >

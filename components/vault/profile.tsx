@@ -16,14 +16,14 @@ export default function Profile({ vault }: { vault: Vault }) {
         className="flex items-center gap-2 px-2 py-1.5 border hairline hover:hairline-strong transition-colors bg-card"
         style={{ borderRadius: 2 }}
       >
-        <span className="engraved text-ink-faint">Viewing as</span>
+        <span className="engraved text-ink-faint hidden sm:inline">Viewing as</span>
         <div
           className="w-6 h-6 border hairline-strong bg-paper flex items-center justify-center mono text-[10px] text-ink"
           style={{ borderRadius: 999 }}
         >
           {me?.initials}
         </div>
-        <span className="text-sm text-ink">{me?.name}</span>
+        <span className="text-sm text-ink hidden sm:inline">{me?.name}</span>
       </button>
     </div>
   );

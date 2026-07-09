@@ -21,20 +21,22 @@ function PendingKeyRow({
   return (
     <button
       onClick={() => onOpen(tx.id)}
-      className="w-full grid grid-cols-[1fr_140px_140px_120px_120px] px-6 py-4 border-b hairline text-left items-center hover:bg-secondary/60 transition-colors"
+      className="w-full px-4 sm:px-6 py-4 border-b hairline text-left hover:bg-secondary/60 transition-colors"
     >
-      <div>
-        <p className="text-sm text-ink">{tx.recipientName}</p>
-        <p className="mono text-xs text-ink-faint mt-0.5">
-          {tx.id} · Requested by {requester?.initials}
-        </p>
-      </div>
-      <p className="mono text-sm text-ink text-right">{formatNGN(tx.amountKobo)}</p>
-      <p className="text-xs text-ink-muted">{formatTime(tx.requestedAt)}</p>
-      <div />
-      <div className="flex items-center justify-end gap-2">
-        <KeyIcon outlined />
-        <span className="engraved text-brass-deep">Your key</span>
+      <div className="sm:grid sm:grid-cols-[1fr_140px_140px_120px_120px] sm:items-center">
+        <div>
+          <p className="text-sm text-ink">{tx.recipientName}</p>
+          <p className="mono text-xs text-ink-faint mt-0.5">
+            {tx.id} · Requested by {requester?.initials}
+          </p>
+        </div>
+        <p className="mono text-sm text-ink mt-1 sm:mt-0 text-right">{formatNGN(tx.amountKobo)}</p>
+        <p className="text-xs text-ink-muted mt-0.5 sm:mt-0">{formatTime(tx.requestedAt)}</p>
+        <div />
+        <div className="flex items-center justify-start sm:justify-end gap-2 mt-1 sm:mt-0">
+          <KeyIcon outlined />
+          <span className="engraved text-brass-deep">Your key</span>
+        </div>
       </div>
     </button>
   );
@@ -70,7 +72,7 @@ export function TransactionsList({
 
   if (vault.transactions.length === 0) {
     return (
-      <div className="px-6 py-12 text-center">
+      <div className="px-4 sm:px-6 py-12 text-center">
         <p className="text-sm text-ink-muted">
           No transactions yet.
         </p>
@@ -82,7 +84,7 @@ export function TransactionsList({
     <>
       {pendingMine.length > 0 && (
         <div>
-          <div className="px-6 py-3 border-b hairline border-t hairline flex items-center gap-2 bg-brass-soft/40">
+          <div className="px-4 sm:px-6 py-3 border-b hairline border-t hairline flex items-center gap-2 bg-brass-soft/40">
             <KeyIcon outlined />
             <p className="engraved text-brass-deep">Pending your key</p>
           </div>
@@ -93,7 +95,7 @@ export function TransactionsList({
       )}
 
       <div className="border-t hairline">
-        <div className="grid grid-cols-[1fr_140px_140px_120px_120px] px-6 py-3 border-b hairline">
+        <div className="hidden sm:grid sm:grid-cols-[1fr_140px_140px_120px_120px] px-4 sm:px-6 py-3 border-b hairline">
           <p className="engraved">Recipient</p>
           <p className="engraved text-right">Amount</p>
           <p className="engraved">Requested</p>
@@ -106,30 +108,32 @@ export function TransactionsList({
             <button
               key={t.id}
               onClick={() => onOpen(t.id)}
-              className={`w-full grid grid-cols-[1fr_140px_140px_120px_120px] px-6 py-4 border-b hairline text-left items-center hover:bg-secondary/60 transition-colors ${
+              className={`w-full px-4 sm:px-6 py-4 border-b hairline text-left hover:bg-secondary/60 transition-colors ${
                 isNew ? "bg-brass-soft/20 transition-all duration-1000" : ""
               }`}
             >
-              <div>
-                <p className="text-sm text-ink">{t.recipientName}</p>
-                <p className="mono text-xs text-ink-faint mt-0.5">
-                  {t.id} · {t.memo || "—"}
+              <div className="sm:grid sm:grid-cols-[1fr_140px_140px_120px_120px] sm:items-center">
+                <div>
+                  <p className="text-sm text-ink">{t.recipientName}</p>
+                  <p className="mono text-xs text-ink-faint mt-0.5">
+                    {t.id} · {t.memo || "—"}
+                  </p>
+                </div>
+                <p className="mono text-sm text-ink mt-1 sm:mt-0 text-right">
+                  {formatNGN(t.amountKobo)}
                 </p>
-              </div>
-              <p className="mono text-sm text-ink text-right">
-                {formatNGN(t.amountKobo)}
-              </p>
-              <p className="text-xs text-ink-muted">{formatTime(t.requestedAt)}</p>
-              <div className="flex items-center gap-1.5">
-                {vault.stakeholders.map((p) => (
-                  <KeyIcon key={p.id} filled={t.approvals.includes(p.id)} />
-                ))}
-                <span className="mono text-xs text-ink-muted ml-1">
-                  {t.approvals.length}/{t.requiredQuorum}
-                </span>
-              </div>
-              <div className="text-right">
-                <StatusPill status={t.status} />
+                <p className="text-xs text-ink-muted mt-0.5 sm:mt-0">{formatTime(t.requestedAt)}</p>
+                <div className="flex items-center gap-1.5 mt-1 sm:mt-0">
+                  {vault.stakeholders.map((p) => (
+                    <KeyIcon key={p.id} filled={t.approvals.includes(p.id)} />
+                  ))}
+                  <span className="mono text-xs text-ink-muted ml-1">
+                    {t.approvals.length}/{t.requiredQuorum}
+                  </span>
+                </div>
+                <div className="text-left sm:text-right mt-0.5 sm:mt-0">
+                  <StatusPill status={t.status} />
+                </div>
               </div>
             </button>
           );

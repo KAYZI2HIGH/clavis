@@ -67,15 +67,15 @@ function CreateQuorumContent({ vaultId }: { vaultId: string }) {
       <h1 className="serif text-3xl text-ink mt-2 leading-tight">
         How many keys does it take to unlock a payout?
       </h1>
-      <div className="mt-12 border hairline-strong bg-card p-8">
-        <div className="flex items-center justify-center gap-4">
+      <div className="mt-12 border hairline-strong bg-card p-4 sm:p-8">
+        <div className="flex items-center justify-center gap-1 sm:gap-4 flex-wrap">
           {Array.from({ length: total }).map((_, i) => (
             <div key={i} className="key-anim" style={{ opacity: i < q ? 1 : 0.35 }}>
-              <KeyIcon filled={i < q} size={36} />
+              <KeyIcon filled={i < q} size={total > 4 ? 24 : 36} />
             </div>
           ))}
         </div>
-        <div className="mt-8 flex items-center justify-center gap-6">
+        <div className="mt-6 sm:mt-8 flex items-center justify-center gap-4 sm:gap-6">
           <button
             className="btn-mech btn-mech-ghost"
             onClick={() => setQuorum(Math.max(1, q - 1))}
@@ -83,7 +83,7 @@ function CreateQuorumContent({ vaultId }: { vaultId: string }) {
           >
             −
           </button>
-          <p className="serif text-4xl text-ink mono" style={{ minWidth: 88, textAlign: "center" }}>
+          <p className="serif text-3xl sm:text-4xl text-ink mono" style={{ minWidth: 72, textAlign: "center" }}>
             {q} <span className="text-ink-faint text-2xl">of {total}</span>
           </p>
           <button
@@ -100,7 +100,7 @@ function CreateQuorumContent({ vaultId }: { vaultId: string }) {
       </div>
       <div className="mt-12 flex justify-end">
         <button
-          className="btn-mech btn-mech-ghost"
+          className="btn-mech btn-mech-ghost w-full sm:w-auto"
           onClick={handleContinue}
         >
           Continue

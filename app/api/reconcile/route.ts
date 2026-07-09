@@ -81,7 +81,7 @@ async function reconcileVault(vaultId: string, virtualAccount: string) {
     return { vaultId, status: "error" };
   }
 
-  let totalChecked = nombaTransactions.length;
+  const totalChecked = nombaTransactions.length;
 
   for (const nombaTx of nombaTransactions) {
     const ref = nombaTx.id || nombaTx.paymentVendorReference || nombaTx.merchantTxRef;

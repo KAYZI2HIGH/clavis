@@ -43,8 +43,8 @@ export function ReconciliationBanner({
 
   return (
     <div className={`w-full border-b overflow-hidden ${bannerColor}`}>
-      <div className="max-w-6xl mx-auto px-8 py-2 flex items-center gap-4">
-        <span className="engraved shrink-0 text-xs">
+      <div className="max-w-6xl mx-auto px-4 sm:px-8 py-2 flex items-center gap-4">
+        <span className="engraved shrink-0 text-xs hidden sm:block">
           RECONCILED {runAt.toUpperCase()}
         </span>
         <div className="flex-1 overflow-hidden relative">

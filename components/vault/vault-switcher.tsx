@@ -34,7 +34,7 @@ export function VaultSwitcher({ vault, vaultId }: VaultSwitcherProps) {
             router.push(`/vault/${val}`);
           }
         }}
-        className="serif text-lg text-ink leading-none bg-transparent border-0 cursor-pointer focus:outline-none focus:ring-0 pr-6 appearance-none"
+        className="serif text-base sm:text-lg text-ink leading-none bg-transparent border-0 cursor-pointer focus:outline-none focus:ring-0 pr-6 appearance-none truncate max-w-[140px] sm:max-w-none"
         style={{
           backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%234F4F4F' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
           backgroundPosition: 'right center',

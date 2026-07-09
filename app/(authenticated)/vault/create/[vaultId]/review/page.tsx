@@ -133,7 +133,7 @@ function CreateReviewContent({ vaultId }: { vaultId: string }) {
       </div>
       <div className="mt-12 flex justify-end">
         <button
-          className="btn-mech btn-mech-primary disabled:opacity-40 flex items-center gap-2"
+          className="btn-mech btn-mech-primary disabled:opacity-40 flex items-center gap-2 w-full sm:w-auto"
           onClick={doFound}
           disabled={founding}
         >

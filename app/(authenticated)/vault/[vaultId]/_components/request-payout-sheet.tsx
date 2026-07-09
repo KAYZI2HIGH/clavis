@@ -16,6 +16,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Field } from "@/components/shared/field";
 import { InputStyles } from "@/components/shared/input-styles";
 import { formatNGN } from "@/lib/format";
@@ -136,10 +137,10 @@ export function RequestPayoutSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="w-full sm:max-w-md bg-paper border-l hairline-strong p-0"
+        className="w-full! sm:max-w-md bg-paper border-l hairline-strong p-0 flex flex-col"
         style={{ borderRadius: 0 }}
       >
-        <SheetHeader className="px-6 py-5 border-b hairline space-y-1 text-left">
+        <SheetHeader className="px-4 sm:px-6 py-5 border-b hairline space-y-1 text-left shrink-0">
           <SheetTitle className="serif text-xl text-ink font-normal">
             Request Payout
           </SheetTitle>
@@ -149,8 +150,9 @@ export function RequestPayoutSheet({
           </SheetDescription>
         </SheetHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="px-6 py-6 space-y-5">
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col min-h-0 flex-1">
+          <ScrollArea className="flex-1 px-4 sm:px-6 py-6">
+            <div className="space-y-5">
             <Field label="Bank">
               <select
                 className="input-mech"
@@ -241,8 +243,9 @@ export function RequestPayoutSheet({
               )}
             </Field>
           </div>
+          </ScrollArea>
 
-          <div className="px-6 py-4 border-t hairline flex items-center justify-between bg-card">
+          <div className="px-4 sm:px-6 py-4 border-t hairline flex items-center justify-between bg-card shrink-0">
             <button
               type="button"
               className="btn-mech btn-mech-ghost"

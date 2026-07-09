@@ -31,14 +31,14 @@ export function VaultDashboard({ vault, vaultId }: VaultDashboardProps) {
       <ReconciliationBanner vaultId={vaultId} />
       <VaultHeader vault={vault} vaultId={vaultId} onSettings={() => setSettingsOpen(true)} />
 
-      <main className="max-w-6xl mx-auto px-8 pb-24">
-        <div className="flex items-end justify-between mt-10 mb-5">
+      <main className="max-w-6xl mx-auto px-4 sm:px-8 pb-24">
+        <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between mt-10 mb-5 gap-4">
           <div>
             <p className="engraved">Ledger</p>
             <p className="serif text-2xl text-ink mt-1">Transactions</p>
           </div>
           <button
-            className="btn-mech btn-mech-primary"
+            className="btn-mech btn-mech-primary w-full sm:w-auto"
             onClick={() => setRequestOpen(true)}
           >
             Request Payout

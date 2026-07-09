@@ -7,6 +7,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { DetailRow } from "@/components/shared/detail-row";
 import { KeyIcon } from "@/components/shared/key-icon";
 import { Seal } from "@/components/shared/seal";
@@ -41,12 +42,12 @@ export function TxDetailSheet({
     <Sheet open={open} onOpenChange={(b) => !b && onClose()}>
       <SheetContent
         side="right"
-        className="w-full sm:max-w-lg bg-paper border-l hairline-strong p-0"
+        className="w-full sm:max-w-lg bg-paper border-l hairline-strong p-0 flex flex-col"
         style={{ borderRadius: 0 }}
       >
         {tx ? (
           <>
-            <SheetHeader className="px-6 py-5 border-b hairline text-left space-y-1">
+            <SheetHeader className="px-4 sm:px-6 py-5 border-b hairline text-left space-y-1 shrink-0">
               <div className="flex items-center justify-between">
                 <SheetTitle className="serif text-xl text-ink font-normal">
                   Payout to {tx.recipientName}
@@ -60,7 +61,8 @@ export function TxDetailSheet({
               </SheetDescription>
             </SheetHeader>
 
-            <div className="px-6 py-6 space-y-6 relative overflow-hidden">
+            <ScrollArea className="flex-1">
+            <div className="px-4 sm:px-6 py-6 space-y-6">
               <div
                 className={`seal-stamp absolute top-4 right-6 pointer-events-none ${
                   justSealed || settled ? "shown" : ""
@@ -157,9 +159,10 @@ export function TxDetailSheet({
                 </div>
               )}
             </div>
+          </ScrollArea>
 
             {canApprove && (
-              <div className="px-6 py-4 border-t hairline bg-card flex items-center justify-between">
+              <div className="px-4 sm:px-6 py-4 border-t hairline bg-card flex items-center justify-between shrink-0">
                 <p className="text-xs text-ink-muted leading-tight max-w-[60%]">
                   This payout is awaiting your key.
                 </p>
