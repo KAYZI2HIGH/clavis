@@ -8,7 +8,7 @@ function SectionLabel({ children }: { children: string }) {
 
 function SectionHeading({ children }: { children: string }) {
   return (
-    <h2 className="serif text-3xl sm:text-4xl text-ink mt-3 leading-tight text-center">
+    <h2 className="serif text-3xl sm:text-4xl text-ink mt-3 leading-tight text-center max-w-3xl text-pretty mx-auto">
       {children}
     </h2>
   );
@@ -18,11 +18,11 @@ export default function WelcomePage() {
   return (
     <MarketingShell>
       {/* ── Hero ── */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-8 py-24 sm:py-36 flex flex-col items-center text-center">
+      <section className="max-w-6xl mx-auto px-4 sm:px-8 py-20 flex flex-col items-center text-center">
         <p className="engraved text-ink-faint tracking-widest">
           BUILT FOR NIGERIAN BUSINESS PARTNERSHIPS
         </p>
-        <h1 className="serif text-4xl sm:text-5xl md:text-6xl text-ink mt-8 leading-tight max-w-3xl">
+        <h1 className="serif text-4xl sm:text-5xl md:text-6xl text-ink mt-5 leading-tight max-w-3xl">
           A vault that opens only when its partners agree.
         </h1>
         <p className="text-base sm:text-lg text-ink-muted mt-6 max-w-xl leading-relaxed">
