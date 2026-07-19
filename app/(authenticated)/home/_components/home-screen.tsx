@@ -68,22 +68,6 @@ export function HomeScreen() {
   };
 
   const handleCreateVault = () => {
-    const name = session?.user?.name ?? "You";
-    saveDraft({
-      name: "",
-      quorum: 2,
-      method: "link",
-      stakeholders: [
-        {
-          id: makeId("sh"),
-          name,
-          email: session?.user?.email ?? "",
-          initials: makeInitials(name),
-          isFounder: true,
-        },
-      ],
-      linkToken: makeId("tk"),
-    });
     router.push("/vault/create/name");
   };
 
@@ -131,7 +115,7 @@ export function HomeScreen() {
 
   const isVaultFounder = (vaultId: string) => {
     const v = vaults?.find((vault) => vault.id === vaultId);
-    return v?.founder_id === v?.youId;
+    return v?.founderId === v?.youId || v?.investorId === v?.youId;
   };
 
   const isFounderOfVault = (vault: { stakeholders?: Stakeholder[] }) => {
@@ -206,7 +190,12 @@ export function HomeScreen() {
                     className="w-full flex items-center justify-between px-6 py-5 text-left hover:bg-secondary/60 transition-colors"
                   >
                     <div>
-                      <p className="serif text-xl text-ink">{v.name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="serif text-xl text-ink">{v.name}</p>
+                        <span className="text-[10px] uppercase tracking-widest text-ink-faint bg-ink/5 px-2 py-0.5 rounded-sm">
+                          {v.investorId === v.youId ? "Investor" : "Operator"}
+                        </span>
+                      </div>
                       <p className="engraved mt-1">
                         Requires {v.quorum} of {v.stakeholders?.length ?? 0} keys
                       </p>
@@ -348,7 +337,7 @@ export function HomeScreen() {
                 className="btn-mech btn-mech-ghost w-full mt-4"
                 onClick={handleCreateVault}
               >
-                Create a Vault
+                Create Investment
               </button>
             </div>
             <div className="border hairline-strong bg-card p-5">

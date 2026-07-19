@@ -103,6 +103,8 @@ export type Vault = {
   pendingJoins?: PendingJoin[];
   emailInvites?: EmailInvite[];
   youId?: string;
+  founderId?: string;
+  investorId?: string;
 };
 
 export type DraftStakeholder = {
