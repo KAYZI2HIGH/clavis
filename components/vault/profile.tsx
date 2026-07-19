@@ -7,7 +7,7 @@ import type { Vault } from "@/lib/types";
 
 export default function Profile({ vault }: { vault: Vault }) {
   const [open, setOpen] = useState(false);
-  const me = vault.stakeholders.find((m) => m.id === vault.youId) || vault.stakeholders[0];
+  const me = (vault.stakeholders ?? []).find((m) => m.id === vault.youId) || (vault.stakeholders ?? [])[0];
 
   return (
     <div className="relative">

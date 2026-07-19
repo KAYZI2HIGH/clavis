@@ -31,7 +31,7 @@ export function VaultHeader({
   const retryVA = useRetryVAMutation(vaultId);
 
   // Determine if the current partner is the founder
-  const isFounder = vault.stakeholders.find((s) => s.id === current)?.isFounder ?? false;
+  const isFounder = (vault.stakeholders ?? []).find((s) => s.id === current)?.is_founder ?? false;
 
   const handleRetryVA = async () => {
     try {
@@ -42,8 +42,8 @@ export function VaultHeader({
     }
   };
 
-  const pendingForMe = vault.transactions.filter(
-    (t) => t.status === "pending" && !t.approvals.includes(current),
+  const pendingForMe = (vault.transactions ?? []).filter(
+    (t) => t.status === "pending" && !(t.approvals ?? []).includes(current ?? ""),
   ).length;
 
   const handleSignOut = () => {
@@ -89,7 +89,7 @@ export function VaultHeader({
           <div className="min-w-0">
             <VaultSwitcher vault={vault} vaultId={vaultId} />
             <p className="engraved mt-1 truncate max-w-[160px] sm:max-w-none">
-              Partnership Vault · {vault.quorum} of {vault.stakeholders.length}{" "}
+              Partnership Vault · {vault.quorum} of {(vault.stakeholders ?? []).length}{" "}
               quorum
             </p>
           </div>
@@ -128,30 +128,30 @@ export function VaultHeader({
             className="serif text-3xl sm:text-5xl text-ink tracking-tight"
             style={{ fontVariantNumeric: "tabular-nums oldstyle-nums" }}
           >
-            {formatNGN(vault.balanceKobo)}
+            {formatNGN(vault.balance_kobo)}
           </p>
         </div>
 
         <div className="sm:ml-auto">
           <p className="engraved mb-2">Funding Account</p>
-          {vault.fundingAccount ?
+          {vault.revenue_account_number ?
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
               <span
                 className="serif text-xl sm:text-3xl text-ink tracking-tight break-all sm:break-normal"
                 style={{ fontVariantNumeric: "tabular-nums oldstyle-nums" }}
               >
-                {vault.fundingAccount}
+                {vault.revenue_account_number}
               </span>
-              {vault.nombaVirtualAccountBank && (
+              {vault.revenue_account_bank && (
                 <span className="text-xs text-ink-faint">
-                  ({vault.nombaVirtualAccountBank})
+                  ({vault.revenue_account_bank})
                 </span>
               )}
               <button
                 className="btn-mech btn-mech-ghost text-[10px] py-1 px-2 uppercase tracking-wider"
                 onClick={async () => {
                   try {
-                    await navigator.clipboard.writeText(vault.fundingAccount);
+                    await navigator.clipboard.writeText(vault.revenue_account_number ?? "");
                     setCopied(true);
                     setTimeout(() => setCopied(false), 1500);
                   } catch {

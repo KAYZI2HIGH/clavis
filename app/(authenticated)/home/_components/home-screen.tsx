@@ -13,7 +13,7 @@ import { useVaultsQuery } from "@/hooks/use-vaults-query";
 import { VaultListSkeleton } from "@/components/vault/vault-list-skeleton";
 import { saveDraft } from "@/lib/draft";
 import { makeId, makeInitials } from "@/lib/vault-utils";
-import type { Stakeholder } from "@/lib/types";
+import type { Stakeholder, Vault } from "@/lib/types";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,18 +35,7 @@ import {
 export function HomeScreen() {
   const { data: session } = useSession();
   const { data: vaultsData, isLoading } = useVaultsQuery();
-  const vaults = (vaultsData?.vaults ?? []) as Array<{
-    id: string;
-    name: string;
-    quorum: number;
-    balanceKobo: number;
-    fundingAccount: string;
-    founderId: string;
-    youId: string;
-    status: string;
-    updatedAt: number;
-    stakeholders: Stakeholder[];
-  }>;
+  const vaults = (vaultsData?.vaults ?? []) as Array<Vault>;
   const qc = useQueryClient();
   const router = useRouter();
   const [pasted, setPasted] = useState("");
@@ -142,7 +131,7 @@ export function HomeScreen() {
 
   const isVaultFounder = (vaultId: string) => {
     const v = vaults?.find((vault) => vault.id === vaultId);
-    return v?.founderId === v?.youId;
+    return v?.founder_id === v?.youId;
   };
 
   const isFounderOfVault = (vault: { stakeholders?: Stakeholder[] }) => {
@@ -154,10 +143,10 @@ export function HomeScreen() {
   // Sort vaults dynamically so recently added or updated are at the top (reversed)
   const activeVaults = (vaults ?? [])
     .filter((v) => v.status !== "draft")
-    .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
+    .sort((a, b) => new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime());
   const draftVaults = (vaults ?? [])
     .filter((v) => v.status === "draft")
-    .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
+    .sort((a, b) => new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime());
 
   const handleResumeDraft = (v: { id: string }) => {
     router.push(`/vault/create/${v.id}/invite`);

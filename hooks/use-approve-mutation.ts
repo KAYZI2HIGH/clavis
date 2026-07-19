@@ -31,12 +31,12 @@ export function useApproveMutation(vaultId: string) {
             if (!old) return old;
               return {
                 ...old,
-                transactions: old.transactions.map((t) =>
+                transactions: (old.transactions ?? []).map((t) =>
                   t.id === variables.txId
                     ? {
                         ...t,
                         approvals: Array.from(
-                          new Set([...(t.approvals ?? []), old.youId])
+                          new Set([...(t.approvals ?? []), old.youId ?? ""])
                         ),
                       }
                     : t

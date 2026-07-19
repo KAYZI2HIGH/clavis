@@ -1,5 +1,7 @@
-import { getAccessToken, getNombaApiBase } from "@/lib/nomba/client";
+import { getAccessToken as getNombaAccessToken, getNombaApiBase } from "@/lib/nomba/client";
 import { getNombaEnvironment } from "@/lib/nomba/env";
+import { getAccessToken as getMonnifyAccessToken, getMonnifyApiBase } from "@/lib/monnify/client";
+import { getMonnifyEnvironment } from "@/lib/monnify/env";
 import { getServiceClient } from "@/lib/supabase/service";
 
 export const runtime = "nodejs";
@@ -9,10 +11,13 @@ type HealthResponse = {
   timestamp: string;
   supabase: "connected" | "error";
   nomba: "authenticated" | "error";
+  monnify: "authenticated" | "error";
   environment: "test" | "live";
   nombaEnv: string;
   nombaApiBase: string;
   nombaEnvVar: string;
+  monnifyEnv: string;
+  monnifyApiBase: string;
 };
 
 async function checkSupabase(): Promise<"connected" | "error"> {
@@ -33,7 +38,16 @@ async function checkSupabase(): Promise<"connected" | "error"> {
 
 async function checkNomba(): Promise<"authenticated" | "error"> {
   try {
-    await getAccessToken();
+    await getNombaAccessToken();
+    return "authenticated";
+  } catch {
+    return "error";
+  }
+}
+
+async function checkMonnify(): Promise<"authenticated" | "error"> {
+  try {
+    await getMonnifyAccessToken();
     return "authenticated";
   } catch {
     return "error";
@@ -44,9 +58,10 @@ async function buildHealth(): Promise<{
   body: HealthResponse;
   httpStatus: number;
 }> {
-  const [supabase, nomba] = await Promise.all([
+  const [supabase, nomba, monnify] = await Promise.all([
     checkSupabase(),
     checkNomba(),
+    checkMonnify(),
   ]);
 
   const body: HealthResponse = {
@@ -54,10 +69,13 @@ async function buildHealth(): Promise<{
     timestamp: new Date().toISOString(),
     supabase,
     nomba,
-    environment: getNombaEnvironment(),
+    monnify,
+    environment: getMonnifyEnvironment(), // Using Monnify environment as primary now
     nombaEnv: getNombaEnvironment(),
     nombaApiBase: getNombaApiBase(),
     nombaEnvVar: process.env.NOMBA_ENV ?? "not set",
+    monnifyEnv: getMonnifyEnvironment(),
+    monnifyApiBase: getMonnifyApiBase(),
   };
 
   return {
@@ -97,9 +115,12 @@ export async function GET(request: Request) {
     <ul>
       <li>Supabase: ${body.supabase}</li>
       <li>Nomba: ${body.nomba}</li>
+      <li>Monnify: ${body.monnify}</li>
       <li>nombaEnv: ${body.nombaEnv}</li>
       <li>nombaApiBase: ${body.nombaApiBase}</li>
       <li>nombaEnvVar: ${body.nombaEnvVar}</li>
+      <li>monnifyEnv: ${body.monnifyEnv}</li>
+      <li>monnifyApiBase: ${body.monnifyApiBase}</li>
     </ul>
   </div>
 </body>

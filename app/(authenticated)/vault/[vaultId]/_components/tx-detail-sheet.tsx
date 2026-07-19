@@ -30,13 +30,13 @@ export function TxDetailSheet({
   onClose,
   onApprove,
 }: TxDetailSheetProps) {
-  const tx = vault.transactions.find((t) => t.id === txId) ?? null;
+  const tx = vault.transactions?.find((t) => t.id === txId) ?? null;
   const current = vault.youId;
   const open = !!tx;
-  const justSealed = tx?.status === "sealed";
+  const justSealed = tx?.status === "approved";
   const settled = tx?.status === "settled";
   const canApprove =
-    tx && tx.status === "pending" && !tx.approvals.includes(current);
+    tx && tx.status === "pending" && !(tx.approvals ?? []).includes(current ?? "");
 
   return (
     <Sheet open={open} onOpenChange={(b) => !b && onClose()}>
@@ -50,14 +50,14 @@ export function TxDetailSheet({
             <SheetHeader className="px-4 sm:px-6 py-5 border-b hairline text-left space-y-1 shrink-0">
               <div className="flex items-center justify-between">
                 <SheetTitle className="serif text-xl text-ink font-normal">
-                  Payout to {tx.recipientName}
+                  Payout to {tx.recipient_name}
                 </SheetTitle>
                 <StatusPill status={tx.status} />
               </div>
               <SheetDescription className="mono text-xs text-ink-faint">
                 {tx.id} · Requested by{" "}
-                {vault.stakeholders.find((s) => s.id === tx.requestedBy)?.name}{" "}
-                · {formatTime(tx.requestedAt)}
+                {(vault.stakeholders ?? []).find((s) => s.id === tx.requested_by)?.name}{" "}
+                · {formatTime(new Date(tx.requested_at).getTime())}
               </SheetDescription>
             </SheetHeader>
 
@@ -69,8 +69,8 @@ export function TxDetailSheet({
                 }`}
               >
                 <Seal
-                  quorum={tx.requiredQuorum}
-                  total={vault.stakeholders.length}
+                  quorum={tx.required_quorum}
+                  total={(vault.stakeholders ?? []).length}
                 />
               </div>
 
@@ -78,23 +78,23 @@ export function TxDetailSheet({
                 label="Amount"
                 value={
                   <span className="mono text-2xl text-ink">
-                    {formatNGN(tx.amountKobo)}
+                    {formatNGN(tx.amount_kobo)}
                   </span>
                 }
               />
               <DetailRow
                 label="Recipient"
-                value={<span className="text-ink">{tx.recipientName}</span>}
+                value={<span className="text-ink">{tx.recipient_name}</span>}
               />
               <DetailRow
                 label="Bank"
-                value={<span className="text-ink">{tx.recipientBankName}</span>}
+                value={<span className="text-ink">{tx.recipient_bank_code}</span>}
               />
               <DetailRow
                 label="Account"
                 value={
                   <span className="mono text-sm text-ink">
-                    {tx.recipientAccount}
+                    {tx.recipient_account}
                   </span>
                 }
               />
@@ -106,8 +106,8 @@ export function TxDetailSheet({
               <div>
                 <p className="engraved mb-3">Keys turned</p>
                 <div className="border hairline-strong divide-y hairline">
-                  {vault.stakeholders.map((p) => {
-                    const turned = tx.approvals.includes(p.id);
+                  {(vault.stakeholders ?? []).map((p) => {
+                    const turned = (tx.approvals ?? []).includes(p.id);
                     return (
                       <div
                         key={p.id}
@@ -134,10 +134,10 @@ export function TxDetailSheet({
                 </div>
               </div>
 
-              {settled && tx.settledAt && (
+              {settled && tx.settled_at && (
                 <p className="text-sm text-ink-muted">
                   Payout sealed and sent. Funds settled{" "}
-                  {formatTime(tx.settledAt)}.
+                  {formatTime(new Date(tx.settled_at).getTime())}.
                 </p>
               )}
               {tx.status === "declined" && (
@@ -146,14 +146,14 @@ export function TxDetailSheet({
                   <p className="text-sm text-ink mt-1.5">
                     Declined by{" "}
                     {
-                      vault.stakeholders.find((s) => s.id === tx.declinedBy)
+                      (vault.stakeholders ?? []).find((s) => s.id === tx.declined_by)
                         ?.name
                     }
                     . No funds were moved.
                   </p>
-                  {tx.declineReason && (
+                  {tx.decline_reason && (
                     <p className="text-sm text-ink-muted mt-2 italic">
-                      &quot;{tx.declineReason}&quot;
+                      &quot;{tx.decline_reason}&quot;
                     </p>
                   )}
                 </div>

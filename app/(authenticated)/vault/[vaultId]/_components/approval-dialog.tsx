@@ -35,7 +35,7 @@ export function ApprovalDialog({
   const approveMutation = useApproveMutation(vaultId);
   const rejectMutation = useRejectMutation(vaultId);
 
-  const tx = vault.transactions.find((t) => t.id === txId) ?? null;
+  const tx = vault.transactions?.find((t) => t.id === txId) ?? null;
   const current = vault.youId;
   const [turning, setTurning] = useState(false);
   const [done, setDone] = useState(false);
@@ -54,8 +54,8 @@ export function ApprovalDialog({
   });
 
   const open = !!tx;
-  const reviewer = vault.stakeholders.find((s) => s.id === current);
-  const requester = vault.stakeholders.find((s) => s.id === tx?.requestedBy);
+  const reviewer = vault.stakeholders?.find((s) => s.id === current);
+  const requester = vault.stakeholders?.find((s) => s.id === tx?.requested_by);
 
   useEffect(() => {
     if (!open) {
@@ -68,7 +68,7 @@ export function ApprovalDialog({
 
   if (!tx || !reviewer) return null;
 
-  const userHasApproved = tx.approvals.includes(current);
+  const userHasApproved = tx.approvals?.includes(current ?? "") ?? false;
   const alreadyProcessed = tx.status === "executing" || tx.status === "settled";
 
   const handleTurn = async () => {
@@ -84,11 +84,11 @@ export function ApprovalDialog({
         if (!old) return old;
         return {
           ...old,
-          transactions: old.transactions.map((t) =>
+          transactions: (old.transactions ?? []).map((t) =>
             t.id === txId
               ? {
                   ...t,
-                  approvals: [...t.approvals, current],
+                  approvals: [...(t.approvals ?? []), current ?? ""],
                 }
               : t
           ),
@@ -117,7 +117,7 @@ export function ApprovalDialog({
         if (!old) return old;
         return {
           ...old,
-          transactions: old.transactions.map((t) =>
+          transactions: (old.transactions ?? []).map((t) =>
             t.id === txId
               ? { ...t, status: "declined" as const }
               : t
@@ -156,12 +156,12 @@ export function ApprovalDialog({
           <p className="text-sm text-ink-muted">
             {requester?.name} has requested a payout of
           </p>
-          <p className="mono text-3xl text-ink">{formatNGN(tx.amountKobo)}</p>
+          <p className="mono text-3xl text-ink">{formatNGN(tx.amount_kobo)}</p>
           <p className="text-sm text-ink">
-            to <span className="text-ink">{tx.recipientName}</span>
-            <span className="mono text-ink-faint"> · {tx.recipientAccount}</span>
+            to <span className="text-ink">{tx.recipient_name}</span>
+            <span className="mono text-ink-faint"> · {tx.recipient_account}</span>
           </p>
-          <p className="text-sm text-ink-muted">{tx.recipientBankName}</p>
+          <p className="text-sm text-ink-muted">{tx.recipient_bank_code}</p>
           {tx.memo && <p className="text-sm text-ink-muted">Memo: {tx.memo}</p>}
         </div>
 

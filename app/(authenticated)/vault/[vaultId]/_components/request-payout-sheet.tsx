@@ -80,7 +80,7 @@ export function RequestPayoutSheet({
     recipientAccount?.length === 10 &&
     recipientBankCode &&
     amountKobo > 0 &&
-    amountKobo <= vault.balanceKobo;
+    amountKobo <= vault.balance_kobo;
 
   const onSubmit = async (data: RequestPayoutSchema) => {
     if (!valid || !resolvedAccountName) return;
@@ -88,19 +88,17 @@ export function RequestPayoutSheet({
     // Optimistic Payout Request insertion
     const optimisticTx = {
       id: makeId("tx"),
-      vaultId,
-      recipientName: resolvedAccountName,
-      recipientAccount: data.recipientAccount,
-      recipientBankCode: data.recipientBankCode,
-      recipientBankName: getBankName(data.recipientBankCode),
-      amountKobo,
+      vault_id: vaultId,
+      recipient_name: resolvedAccountName,
+      recipient_account: data.recipientAccount,
+      recipient_bank_code: data.recipientBankCode,
+      amount_kobo: amountKobo,
       memo: (data.memo ?? "").trim(),
       status: "pending" as const,
-      requestedBy: vault.youId,
-      requestedAt: Date.now(),
-      requiredQuorum: vault.quorum,
-      approvals: [vault.youId],
-      nombaTxRef: null,
+      requested_by: vault.youId ?? "",
+      requested_at: new Date().toISOString(),
+      required_quorum: vault.quorum,
+      approvals: [vault.youId ?? ""],
     };
 
     qc.setQueryData(
@@ -109,7 +107,7 @@ export function RequestPayoutSheet({
         if (!old) return old;
         return {
           ...old,
-          transactions: [optimisticTx, ...old.transactions],
+          transactions: [optimisticTx, ...(old.transactions ?? [])],
         };
       }
     );
@@ -203,7 +201,7 @@ export function RequestPayoutSheet({
 
             <Field
               label="Amount"
-              hint={`Available ${formatNGN(vault.balanceKobo)}`}
+              hint={`Available ${formatNGN(vault.balance_kobo)}`}
             >
               <div className="flex items-center">
                 <span className="mono text-ink-faint px-3 border hairline-strong border-r-0 h-[38px] flex items-center">
@@ -226,7 +224,7 @@ export function RequestPayoutSheet({
               {errors.amount && (
                 <p className="text-xs text-crimson mt-1">{errors.amount.message}</p>
               )}
-              {amountKobo > vault.balanceKobo && (
+              {amountKobo > vault.balance_kobo && (
                 <p className="text-xs text-crimson mt-1.5">
                   Amount exceeds vault balance.
                 </p>

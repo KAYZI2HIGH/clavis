@@ -17,7 +17,7 @@ function PendingKeyRow({
   tx: Transaction;
   onOpen: (id: string) => void;
 }) {
-  const requester = vault.stakeholders.find((s) => s.id === tx.requestedBy);
+  const requester = (vault.stakeholders ?? []).find((s) => s.id === tx.requested_by);
   return (
     <button
       onClick={() => onOpen(tx.id)}
@@ -25,13 +25,13 @@ function PendingKeyRow({
     >
       <div className="sm:grid sm:grid-cols-[1fr_140px_140px_120px_120px] sm:items-center">
         <div>
-          <p className="text-sm text-ink">{tx.recipientName}</p>
+          <p className="text-sm text-ink">{tx.recipient_name}</p>
           <p className="mono text-xs text-ink-faint mt-0.5">
             {tx.id} · Requested by {requester?.initials}
           </p>
         </div>
-        <p className="mono text-sm text-ink mt-1 sm:mt-0 text-right">{formatNGN(tx.amountKobo)}</p>
-        <p className="text-xs text-ink-muted mt-0.5 sm:mt-0">{formatTime(tx.requestedAt)}</p>
+        <p className="mono text-sm text-ink mt-1 sm:mt-0 text-right">{formatNGN(tx.amount_kobo)}</p>
+        <p className="text-xs text-ink-muted mt-0.5 sm:mt-0">{formatTime(new Date(tx.requested_at).getTime())}</p>
         <div />
         <div className="flex items-center justify-start sm:justify-end gap-2 mt-1 sm:mt-0">
           <KeyIcon outlined />
@@ -51,26 +51,26 @@ export function TransactionsList({
 }) {
   const current = vault.youId;
   const [justAddedTxId, setJustAddedTxId] = useState<string | null>(null);
-  const prevCountRef = useRef(vault.transactions.length);
+  const prevCountRef = useRef((vault.transactions ?? []).length);
 
   useEffect(() => {
-    if (vault.transactions.length > prevCountRef.current) {
-      const newestTx = vault.transactions[0];
+    if ((vault.transactions ?? []).length > prevCountRef.current) {
+      const newestTx = (vault.transactions ?? [])[0];
       if (newestTx) {
         setJustAddedTxId(newestTx.id);
         const timer = setTimeout(() => setJustAddedTxId(null), 3000);
         return () => clearTimeout(timer);
       }
     }
-    prevCountRef.current = vault.transactions.length;
+    prevCountRef.current = (vault.transactions ?? []).length;
   }, [vault.transactions]);
 
-  const pendingMine = vault.transactions.filter(
-    (t) => t.status === "pending" && !t.approvals.includes(current),
+  const pendingMine = (vault.transactions ?? []).filter(
+    (t) => t.status === "pending" && !(t.approvals ?? []).includes(current ?? ""),
   );
-  const rest = vault.transactions.filter((t) => !pendingMine.includes(t));
+  const rest = (vault.transactions ?? []).filter((t) => !pendingMine.includes(t));
 
-  if (vault.transactions.length === 0) {
+  if ((vault.transactions ?? []).length === 0) {
     return (
       <div className="px-4 sm:px-6 py-12 text-center">
         <p className="text-sm text-ink-muted">
@@ -114,21 +114,21 @@ export function TransactionsList({
             >
               <div className="sm:grid sm:grid-cols-[1fr_140px_140px_120px_120px] sm:items-center">
                 <div>
-                  <p className="text-sm text-ink">{t.recipientName}</p>
+                  <p className="text-sm text-ink">{t.recipient_name}</p>
                   <p className="mono text-xs text-ink-faint mt-0.5">
                     {t.id} · {t.memo || "—"}
                   </p>
                 </div>
                 <p className="mono text-sm text-ink mt-1 sm:mt-0 text-right">
-                  {formatNGN(t.amountKobo)}
+                  {formatNGN(t.amount_kobo)}
                 </p>
-                <p className="text-xs text-ink-muted mt-0.5 sm:mt-0">{formatTime(t.requestedAt)}</p>
+                <p className="text-xs text-ink-muted mt-0.5 sm:mt-0">{formatTime(new Date(t.requested_at).getTime())}</p>
                 <div className="flex items-center gap-1.5 mt-1 sm:mt-0">
-                  {vault.stakeholders.map((p) => (
-                    <KeyIcon key={p.id} filled={t.approvals.includes(p.id)} />
+                  {(vault.stakeholders ?? []).map((p) => (
+                    <KeyIcon key={p.id} filled={(t.approvals ?? []).includes(p.id)} />
                   ))}
                   <span className="mono text-xs text-ink-muted ml-1">
-                    {t.approvals.length}/{t.requiredQuorum}
+                    {(t.approvals ?? []).length}/{t.required_quorum}
                   </span>
                 </div>
                 <div className="text-left sm:text-right mt-0.5 sm:mt-0">

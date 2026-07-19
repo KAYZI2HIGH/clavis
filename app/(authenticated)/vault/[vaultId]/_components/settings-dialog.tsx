@@ -21,7 +21,7 @@ function QuorumEditor({ vault, vaultId }: { vault: Vault; vaultId: string }) {
   const qc = useQueryClient();
   const [draft, setDraft] = useState(vault.quorum);
   const [confirm, setConfirm] = useState(false);
-  const total = vault.stakeholders.length;
+  const total = vault.stakeholders?.length ?? 0;
 
   useEffect(() => {
     setDraft(vault.quorum);
@@ -319,11 +319,11 @@ function SettingsInvite({ vault, vaultId }: { vault: Vault; vaultId: string }) {
         </div>
       )}
       
-      {vault.pendingJoins.length > 0 && (
+      {(vault.pendingJoins ?? []).length > 0 && (
         <div className="mt-5">
           <p className="engraved mb-2">Pending approval to join</p>
           <div className="border hairline-strong bg-card divide-y hairline">
-            {vault.pendingJoins.map((pj) => (
+            {(vault.pendingJoins ?? []).map((pj) => (
               <PendingJoinRow key={pj.id} pj={pj} vaultId={vaultId} />
             ))}
           </div>
@@ -400,11 +400,11 @@ export function SettingsDialog({
             <div className="flex items-center justify-between mb-3">
               <p className="engraved">Stakeholders</p>
               <p className="engraved text-ink-faint">
-                {vault.quorum} of {vault.stakeholders.length} quorum
+                {vault.quorum} of {(vault.stakeholders ?? []).length} quorum
               </p>
             </div>
             <div className="border hairline-strong divide-y hairline">
-              {vault.stakeholders.map((m) => (
+              {(vault.stakeholders ?? []).map((m) => (
                 <div key={m.id} className="flex items-center gap-3 px-4 py-3">
                   <div
                     className="w-7 h-7 border hairline-strong flex items-center justify-center mono text-[10px] text-ink"
@@ -415,7 +415,7 @@ export function SettingsDialog({
                   <div className="flex-1">
                     <p className="text-sm text-ink">
                       {m.name}
-                      {m.isFounder && (
+                      {m.is_founder && (
                         <span className="engraved text-ink-faint ml-2">
                           Founder
                         </span>

@@ -9,7 +9,7 @@ export function EmptyVault({ vault }: { vault: Vault }) {
 
   const copyAccountNumber = async () => {
     try {
-      await navigator.clipboard.writeText(vault.fundingAccount);
+      await navigator.clipboard.writeText(vault.revenue_account_number ?? "No account");
       setCopied(true);
       toast.success("Account number copied");
       setTimeout(() => setCopied(false), 1400);
@@ -33,12 +33,12 @@ export function EmptyVault({ vault }: { vault: Vault }) {
         </div>
         <div className="px-6 py-8">
           <p className="mono text-2xl text-ink tracking-wider">
-            {vault.fundingAccount}
+            {vault.revenue_account_number ?? "No account"}
           </p>
           <p className="text-sm text-ink-muted mt-3 max-w-md">
             Send deposits to this account. Funds appear in the vault once
             cleared. Outbound transfers require {vault.quorum} of{" "}
-            {vault.stakeholders.length} partner keys.
+            {(vault.stakeholders ?? []).length} partner keys.
           </p>
         </div>
         <div className="px-6 py-3 border-t hairline flex items-center justify-end">

@@ -39,7 +39,7 @@ export function useRejectMutation(vaultId: string) {
           if (!old) return old;
           return {
             ...old,
-            transactions: old.transactions.map((t) =>
+            transactions: (old.transactions ?? []).map((t) =>
               t.id === variables.txId
                 ? { ...t, status: "declined" as const }
                 : t
