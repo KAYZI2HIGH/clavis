@@ -79,28 +79,59 @@ export async function POST(
     );
   }
 
+  // Fetch standing orders
+  const { data: standingOrders } = await getServiceClient()
+    .from("standing_orders")
+    .select("*")
+    .eq("vault_id", vaultId)
+    .eq("status", "active");
+
+  const { matchStandingOrder } = await import("@/lib/standing-orders");
+  const matchedOrder = standingOrders ? matchStandingOrder(standingOrders, {
+    amount_kobo: amountKobo,
+    recipient_account: recipientAccount,
+  }) : null;
+
+  let initialStatus = "pending";
+  let finalQuorum = vault.quorum;
+
+  if (matchedOrder) {
+    if (matchedOrder.action === "auto_execute") {
+      initialStatus = "approved";
+      finalQuorum = 1;
+    } else if (matchedOrder.action === "always_require_investor") {
+      // Basic approach: increment quorum by 1 to represent investor's mandatory vote
+      finalQuorum = vault.quorum + 1;
+    }
+    // "operator_quorum_only" and "notify_then_execute" remain pending with standard quorum
+  }
+
   // Insert transaction
+  const txPayload = {
+    id: makeId("tx"),
+    vault_id: vaultId,
+    requested_by: member.id,
+    recipient_name: recipientName,
+    recipient_account: recipientAccount,
+    recipient_bank_code: recipientBankCode,
+    amount_kobo: amountKobo,
+    memo: memo || "",
+    narration: memo || recipientName,
+    status: initialStatus,
+    required_quorum: finalQuorum,
+    standing_order_id: matchedOrder?.id ?? null,
+    requested_at: new Date().toISOString(),
+    nomba_tx_ref: makeId("ref"),
+  };
+
   const { data: transaction, error } = await getServiceClient()
     .from("transactions")
-    .insert({
-      id: makeId("tx"),
-      vault_id: vaultId,
-      requested_by: member.id,
-      recipient_name: recipientName,
-      recipient_account: recipientAccount,
-      recipient_bank_code: recipientBankCode,
-      amount_kobo: amountKobo,
-      memo: memo || "",
-      narration: memo || recipientName,
-      status: "pending",
-      required_quorum: vault.quorum,
-      requested_at: new Date().toISOString(),
-      nomba_tx_ref: makeId("ref"),
-    })
+    .insert(txPayload)
     .select()
     .single();
 
   if (error) {
+    console.error("Transaction insert error:", error);
     return Response.json(
       { error: "Failed to create transaction" },
       { status: 500 }
