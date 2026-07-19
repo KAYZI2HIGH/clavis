@@ -16,7 +16,6 @@ export default function CreateNamePage() {
   const qc = useQueryClient();
 
   const [name, setName] = useState("");
-  const [method, setMethod] = useState<"link" | "email">("link");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,68 +27,46 @@ export default function CreateNamePage() {
     setError(null);
 
     const vaultId = makeId("v");
-    const linkToken = makeId("tk");
 
-    try {
-      const res = await fetch("/api/vaults/draft", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), vaultId, method, token: linkToken }),
-      });
+    // Seed React Query cache optimistically
+    qc.setQueryData(queryKeys.vaults.detail(vaultId), {
+      id: vaultId,
+      name: name.trim(),
+      status: "draft",
+      balance_kobo: 0,
+      total_invested_kobo: 0,
+      total_settled_kobo: 0,
+      quorum: 1,
+      stakeholders: [],
+      transactions: [],
+      standing_orders: [],
+    });
 
+    // Navigate immediately
+    router.push(`/vault/create/${vaultId}/terms`);
+
+    // POST in background
+    fetch("/api/vaults/draft", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: name.trim(), vaultId }),
+    }).then(async (res) => {
       if (!res.ok) {
-        const payload = await res.json().catch(() => ({}));
-        setError(payload.error ?? "Failed to create vault. Please try again.");
-        setLoading(false);
-        return;
+        throw new Error("Failed to create vault");
       }
-
-      const data = await res.json();
-      
-      // Update cache with the returned draft details
-      qc.setQueryData(queryKeys.vaults.detail(vaultId), {
-        id: vaultId,
-        name: name.trim(),
-        quorum: 2,
-        status: "draft",
-        balance_kobo: 0,
-        funding_account: "",
-        stakeholders: [{
-          id: data.founderId,
-          name: session?.user?.name ?? "You",
-          email: session?.user?.email ?? "",
-          initials: makeInitials(session?.user?.name ?? "You"),
-          is_founder: true,
-          vault_id: vaultId,
-        }],
-        transactions: [],
-        linkInvitations: method === "link" ? [{
-          id: makeId("li"),
-          token: data.token ?? linkToken,
-          placeholder: "",
-          invitedBy: data.founderId,
-          status: "pending",
-          createdAt: Date.now(),
-        }] : [],
-        emailInvites: [],
-        pendingJoins: [],
-        youId: data.founderId,
-        founderId: data.founderId,
-      });
-
-      // Navigate to invite step
-      router.push(`/vault/create/${vaultId}/invite`);
-    } catch {
-      setError("Network error. Please try again.");
-      setLoading(false);
-    }
+    }).catch(() => {
+      // Revert cache and navigation on error
+      qc.removeQueries({ queryKey: queryKeys.vaults.detail(vaultId) });
+      toast.error("Failed to start vault setup. Please try again.");
+      router.push("/home");
+    });
   };
 
   return (
     <CreateStepShell step={1} onBack={() => router.push("/home")}>
       <p className="engraved">Name</p>
       <h1 className="serif text-3xl text-ink mt-2 leading-tight">
-        What is this vault for?
+        Name your investment
       </h1>
       <div className="mt-8">
         <input
@@ -102,25 +79,9 @@ export default function CreateNamePage() {
           disabled={loading}
         />
         <p className="text-sm text-ink-muted mt-3">
-          This is the name your partners will see when they&apos;re invited.
+          Give this deal a name your operators will recognise
         </p>
         {error && <p className="text-sm text-crimson mt-3">{error}</p>}
-      </div>
-
-      <div className="mt-8">
-        <p className="engraved mb-3">Invite method</p>
-        <div className="inline-flex border hairline-strong" style={{ borderRadius: 2 }}>
-          {(["link", "email"] as const).map((m) => (
-            <button
-              key={m}
-              onClick={() => setMethod(m)}
-              disabled={loading}
-              className={`px-4 py-2 text-sm transition-colors ${method === m ? "bg-ink text-paper" : "text-ink-muted hover:text-ink"}`}
-            >
-              {m === "link" ? "Share a Link" : "Invite by Email"}
-            </button>
-          ))}
-        </div>
       </div>
 
       <div className="mt-12 flex justify-end">
@@ -130,7 +91,7 @@ export default function CreateNamePage() {
           disabled={!valid || loading}
         >
           {loading && <Loader2 className="h-3 w-3 animate-spin" />}
-          {loading ? "Creating vault…" : "Continue"}
+          {loading ? "Starting…" : "Continue"}
         </button>
       </div>
     </CreateStepShell>
