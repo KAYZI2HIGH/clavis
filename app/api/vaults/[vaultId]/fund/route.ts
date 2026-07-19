@@ -1,138 +1,128 @@
 import { auth } from "@/auth";
-import { createVirtualAccount } from "@/lib/nomba/accounts";
-import { NombaApiError } from "@/lib/nomba/client";
-import { log } from "@/lib/logger";
 import { getServiceClient } from "@/lib/supabase/service";
+import { log } from "@/lib/logger";
+import { createReservedAccount } from "@/lib/monnify/accounts";
 
 export const runtime = "nodejs";
 
-type VaultFundRow = {
-  id: string;
-  name: string;
-  founder_id: string | null;
-  nomba_virtual_account_number: string | null;
-  nomba_virtual_account_bank: string | null;
-};
-
 export async function POST(
-  _request: Request,
-  context: { params: Promise<{ vaultId: string }> },
+  request: Request,
+  { params }: { params: Promise<{ vaultId: string }> }
 ) {
-  // 1. Get session via auth() — return 401 if not authenticated
   const session = await auth();
-  if (!session?.user?.id) {
+  if (!session?.user) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { vaultId } = await context.params;
-
-  // 2. Fetch the vault from Supabase by vaultId
-  const { data: vault, error } = await getServiceClient()
-    .from("vaults")
-    .select("id, name, founder_id, nomba_virtual_account_number, nomba_virtual_account_bank")
-    .eq("id", vaultId)
-    .maybeSingle();
-
-  if (error) {
-    log({
-      level: "error",
-      event: "vault_fund_lookup_failed",
-      vaultId,
-      error: error.message,
-    });
-    return Response.json({ error: "Failed to load vault" }, { status: 500 });
-  }
-
-  if (!vault) {
-    return Response.json({ error: "Vault not found" }, { status: 404 });
-  }
-
-  const row = vault as VaultFundRow;
+  const { vaultId } = await params;
 
   const email = session.user.email;
   const phone = session.user.phone;
+  if (!email && !phone) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-  // 3. Confirm the requesting user is the founder stakeholder
-  const { data: founderRow, error: founderErr } = await getServiceClient()
+  // 1. Fetch vault
+  const { data: vault, error: vaultError } = await getServiceClient()
+    .from("vaults")
+    .select("name, status, investor_id, revenue_account_number, revenue_account_bank, capital_account_number, capital_account_bank")
+    .eq("id", vaultId)
+    .single();
+
+  if (vaultError || !vault) {
+    return Response.json({ error: "Vault not found" }, { status: 404 });
+  }
+
+  // 2. Confirm requester is the vault investor
+  const { data: investor, error: shError } = await getServiceClient()
     .from("stakeholders")
     .select("id")
     .eq("vault_id", vaultId)
-    .eq("is_founder", true)
-    .or(
-      [email ? `email.eq.${email}` : null, phone ? `phone.eq.${phone}` : null]
-        .filter(Boolean)
-        .join(",")
-    )
-    .maybeSingle();
+    .eq("is_investor", true)
+    .eq("id", vault.investor_id)
+    .or(email && phone ? `email.eq.${email},phone.eq.${phone}` : email ? `email.eq.${email}` : `phone.eq.${phone}`)
+    .single();
 
-  if (founderErr || !founderRow) {
-    log({
-      level: "warn",
-      event: "vault_fund_retry_unauthorized",
-      vaultId,
-      email,
-      phone,
-      error: founderErr?.message
-    });
-    return Response.json({ error: "Only the founder can retry VA setup" }, { status: 403 });
+  if (shError || !investor) {
+    return Response.json({ error: "Unauthorized to fund vault" }, { status: 403 });
   }
 
-  // 4. If vault already has nomba_virtual_account_number set, return immediately
-  if (row.nomba_virtual_account_number) {
+  // Idempotent return if accounts already exist
+  if (vault.revenue_account_number && vault.capital_account_number) {
     return Response.json({
-      accountNumber: row.nomba_virtual_account_number,
-      bankName: row.nomba_virtual_account_bank ?? "",
+      revenueAccount: {
+        accountNumber: vault.revenue_account_number,
+        bankName: vault.revenue_account_bank,
+      },
+      capitalAccount: {
+        accountNumber: vault.capital_account_number,
+        bankName: vault.capital_account_bank,
+      }
     });
   }
 
   try {
-    // 5. Call createVirtualAccount
-    const account = await createVirtualAccount({
-      vaultId: row.id,
-      vaultName: row.name,
-    });
+    // 3 & 4. Call createRevenueAccount and createCapitalAccount from Monnify
+    // We use createReservedAccount from lib/monnify/accounts.ts
+    const [revenueRes, capitalRes] = await Promise.all([
+      createReservedAccount({
+        accountReference: `REV-${vaultId}`,
+        accountName: `${vault.name} Revenue`,
+        customerEmail: email ?? "support@clavis.com",
+        customerName: session.user.name ?? "Vault Investor",
+      }),
+      createReservedAccount({
+        accountReference: `CAP-${vaultId}`,
+        accountName: `${vault.name} Capital`,
+        customerEmail: email ?? "support@clavis.com",
+        customerName: session.user.name ?? "Vault Investor",
+      })
+    ]);
 
-    // 6. On success: Update vault row
+    // Parse the Monnify response to extract account number and bank name
+    // Monnify returns an array of accounts inside responseBody.accounts
+    const revAcct = revenueRes.responseBody.accounts[0];
+    const capAcct = capitalRes.responseBody.accounts[0];
+
+    const revenue_account_number = revAcct.accountNumber;
+    const revenue_account_bank = revAcct.bankName;
+    const capital_account_number = capAcct.accountNumber;
+    const capital_account_bank = capAcct.bankName;
+
+    // 5. Update vault
     const { error: updateError } = await getServiceClient()
       .from("vaults")
       .update({
-        nomba_virtual_account_number: account.accountNumber,
-        nomba_virtual_account_bank: account.bankName,
-        funding_account: account.accountNumber,
+        revenue_account_number,
+        revenue_account_bank,
+        capital_account_number,
+        capital_account_bank,
         updated_at: new Date().toISOString(),
       })
       .eq("id", vaultId);
 
     if (updateError) {
-      log({
-        level: "error",
-        event: "vault_fund_persist_failed",
-        vaultId,
-        error: updateError.message,
-      });
-      return Response.json({ error: "Failed to store virtual account details" }, { status: 500 });
+      throw new Error(`Failed to update vault: ${updateError.message}`);
     }
 
+    // 6. Return both account details
     return Response.json({
-      accountNumber: account.accountNumber,
-      bankName: account.bankName,
+      revenueAccount: {
+        accountNumber: revenue_account_number,
+        bankName: revenue_account_bank,
+      },
+      capitalAccount: {
+        accountNumber: capital_account_number,
+        bankName: capital_account_bank,
+      }
     });
-  } catch (err) {
-    const message =
-      err instanceof NombaApiError
-        ? err.nombaMessage
-        : err instanceof Error
-          ? err.message
-          : "Failed to create virtual account";
-
-    // 7. On Nomba failure: Log the error with vaultId tagged and return 500
+  } catch (error) {
     log({
       level: "error",
-      event: "vault_fund_create_failed",
+      event: "vault_funding_accounts_failed",
       vaultId,
-      error: message,
+      error: error instanceof Error ? error.message : String(error),
     });
-
-    return Response.json({ error: "Failed to create virtual account" }, { status: 500 });
+    return Response.json({ error: "Failed to create funding accounts" }, { status: 500 });
   }
 }
