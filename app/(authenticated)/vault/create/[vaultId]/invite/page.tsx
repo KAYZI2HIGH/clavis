@@ -1,48 +1,52 @@
 "use client";
 
-import { useState } from "react";
+import { useState, use, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query-keys";
 import { CreateStepShell, RequireDraft } from "../../_components/create-step-shell";
 import { toast } from "sonner";
-import { Loader2, UserPlus, CheckCircle2 } from "lucide-react";
+import { KeyIcon } from "@/components/shared/key-icon";
+import { Copy, CheckCircle2 } from "lucide-react";
+import type { Vault } from "@/lib/types";
 
-export default function CreateInvitePage({ params }: { params: { vaultId: string } }) {
+export default function CreateInvitePage({ params }: { params: Promise<{ vaultId: string }> }) {
   const router = useRouter();
-  const vaultId = params.vaultId;
+  const { vaultId } = use(params);
+  
+  const [copied, setCopied] = useState(false);
 
-  const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [invites, setInvites] = useState<Array<{name: string, email: string, code: string}>>([]);
+  // Poll for stakeholders (or rely on React Query refetch intervals)
+  const { data: vault } = useQuery<Vault>({
+    queryKey: queryKeys.vaults.detail(vaultId),
+    queryFn: async () => {
+      const res = await fetch(`/api/vaults/${vaultId}`);
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+    refetchInterval: 3000, // Poll every 3s to see new joins
+  });
 
-  const handleInvite = async () => {
-    if (!email || !name) return;
-    setLoading(true);
+  const inviteUrl = typeof window !== "undefined"
+    ? `${window.location.origin}/join-vault?token=${vaultId}`
+    : `/join-vault?token=${vaultId}`;
 
+  const copy = async () => {
     try {
-      const res = await fetch(`/api/vaults/${vaultId}/invite`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, name }),
-      });
-
-      if (!res.ok) throw new Error("Failed to invite");
-
-      const data = await res.json();
-      setInvites([...invites, { email, name, code: data.invite_code }]);
-      setEmail("");
-      setName("");
-      toast.success("Operator invited successfully");
+      await navigator.clipboard.writeText(inviteUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      toast.success("Link copied to clipboard");
     } catch {
-      toast.error("Failed to invite operator. Please try again.");
-    } finally {
-      setLoading(false);
+      toast.error("Failed to copy link");
     }
   };
 
   const handleContinue = () => {
     router.push(`/vault/create/${vaultId}/fund`);
   };
+
+  const stakeholders = vault?.stakeholders || [];
 
   return (
     <RequireDraft>
@@ -52,62 +56,68 @@ export default function CreateInvitePage({ params }: { params: { vaultId: string
           Invite your operators
         </h1>
         <p className="text-sm text-ink-muted mt-3">
-          Operators will manage day-to-day payouts and operations. They will need to accept the invite to join.
+          Share this link with your operators. When they join, they will appear below.
         </p>
         
         <div className="mt-8 space-y-6">
-          <div className="border hairline-strong bg-card p-6 space-y-4">
-            <div>
-              <label className="engraved block mb-2">Operator Name</label>
-              <input 
-                type="text" 
-                className="input-mech w-full" 
-                value={name} 
-                onChange={e => setName(e.target.value)} 
-                placeholder="Jane Doe"
-              />
+          <div className="border hairline-strong bg-card p-6">
+            <p className="engraved mb-2">Invitation link</p>
+            <div className="flex items-center gap-2">
+              <div className="mono text-xs text-ink bg-paper border hairline-strong px-3 py-3 break-all flex-1" style={{ borderRadius: 2 }}>
+                {inviteUrl}
+              </div>
+              <button 
+                className="btn-mech btn-mech-ghost px-4 h-full"
+                onClick={copy}
+                aria-label="Copy link"
+              >
+                {copied ? <CheckCircle2 className="h-4 w-4 text-secondary" /> : <Copy className="h-4 w-4" />}
+              </button>
             </div>
-            <div>
-              <label className="engraved block mb-2">Operator Email</label>
-              <input 
-                type="email" 
-                className="input-mech w-full" 
-                value={email} 
-                onChange={e => setEmail(e.target.value)} 
-                placeholder="jane@example.com"
-              />
-            </div>
-            <button
-              className="btn-mech flex items-center justify-center gap-2 w-full mt-4"
-              onClick={handleInvite}
-              disabled={loading || !email || !name}
-            >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
-              Send Invite
-            </button>
+            <p className="text-xs text-ink-muted mt-3">
+              Anyone with this link can join as an operator for this vault.
+            </p>
           </div>
 
-          {invites.length > 0 && (
-            <div className="border hairline-strong bg-card divide-y hairline">
-              {invites.map((inv, idx) => (
-                <div key={idx} className="flex items-center justify-between p-4">
-                  <div>
-                    <p className="serif text-lg text-ink">{inv.name}</p>
-                    <p className="text-sm text-ink-muted">{inv.email}</p>
+          <div className="mt-10">
+            <p className="engraved mb-3">Joined Key-holders</p>
+            <div className="border hairline-strong bg-card divide-y hairline min-h-[100px]">
+              {stakeholders.length > 0 ? stakeholders.map((sh) => (
+                <div key={sh.id} className="flex items-center gap-3 px-4 py-3">
+                  <div
+                    className="w-7 h-7 border hairline-strong flex items-center justify-center mono text-[10px] text-ink"
+                    style={{ borderRadius: 999 }}
+                  >
+                    {sh.initials}
                   </div>
-                  <div className="flex items-center gap-1.5 text-secondary">
-                    <CheckCircle2 className="h-4 w-4" />
-                    <span className="text-xs uppercase tracking-wider font-semibold">Invited</span>
+                  <div className="flex-1">
+                    <p className="text-sm text-ink">
+                      {sh.name}
+                      {sh.isFounder && (
+                        <span className="engraved text-brass-deep ml-1">You</span>
+                      )}
+                      {!sh.isFounder && (
+                        <span className="engraved text-secondary ml-1">Operator</span>
+                      )}
+                    </p>
+                    {sh.email && (
+                      <p className="engraved text-ink-faint">{sh.email}</p>
+                    )}
                   </div>
+                  <KeyIcon outlined />
                 </div>
-              ))}
+              )) : (
+                <div className="flex items-center justify-center h-[100px] text-sm text-ink-faint">
+                  Waiting for operators to join...
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
 
         <div className="mt-12 flex justify-end">
           <button
-            className="btn-mech btn-mech-ghost disabled:opacity-40 flex items-center gap-1.5 w-full sm:w-auto"
+            className="btn-mech btn-mech-ghost w-full sm:w-auto"
             onClick={handleContinue}
           >
             Continue to Funding

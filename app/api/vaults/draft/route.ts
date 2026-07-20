@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: { name?: string };
+  let body: { name?: string; vaultId?: string };
   try {
     body = await request.json();
   } catch {
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Vault name is required" }, { status: 400 });
   }
 
-  const vaultId = makeId("v");
+  const vaultId = body.vaultId || makeId("v");
   const investorStakeholderId = makeId("sh");
 
   // 1. Insert draft vault
@@ -78,6 +78,28 @@ export async function POST(request: Request) {
       { error: "Failed to register investor" },
       { status: 500 },
     );
+  }
+
+  // 3. Create an active link invitation matching the vaultId so operators can join
+  const { error: linkError } = await getServiceClient()
+    .from("link_invitations")
+    .insert({
+      id: makeId("link"),
+      vault_id: vaultId,
+      token: vaultId, // token is the vaultId for simplicity in v2
+      invited_by: investorStakeholderId,
+      status: "pending",
+      created_at: new Date().toISOString(),
+    });
+
+  if (linkError) {
+    log({
+      level: "error",
+      event: "vault_draft_link_failed",
+      vaultId,
+      error: linkError.message,
+    });
+    // Non-fatal, but could cause issues joining
   }
 
   return Response.json({
