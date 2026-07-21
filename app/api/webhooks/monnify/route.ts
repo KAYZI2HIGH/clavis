@@ -403,12 +403,24 @@ async function processMonnifyEvent(payload: MonnifyWebhookEvent): Promise<void> 
   }
 }
 
+export async function GET() {
+  return new Response("ok", { status: 200 });
+}
+
 export async function POST(request: Request) {
-  const rawBody = await request.text();
+  let rawBody = "";
+  try {
+    rawBody = await request.text();
+  } catch {
+    return new Response("ok", { status: 200 });
+  }
+
   const signature = request.headers.get("monnify-signature");
 
+  // Monnify dashboard test pings may lack signatures or valid bodies
   if (!signature) {
-    return new Response("missing headers", { status: 400 });
+    log({ level: "info", event: "webhook_ping_no_signature" });
+    return new Response("ok", { status: 200 });
   }
 
   const expectedSignature = crypto
@@ -417,19 +429,22 @@ export async function POST(request: Request) {
     .digest("hex");
 
   if (signature !== expectedSignature) {
-    return new Response("bad signature", { status: 401 });
+    log({ level: "warn", event: "webhook_bad_signature" });
+    return new Response("ok", { status: 200 });
   }
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(rawBody);
   } catch {
-    return new Response("invalid json", { status: 400 });
+    log({ level: "warn", event: "webhook_invalid_json" });
+    return new Response("ok", { status: 200 });
   }
 
   const payload = parseMonnifyWebhookPayload(parsed);
   if (!payload) {
-    return new Response("invalid payload", { status: 400 });
+    log({ level: "warn", event: "webhook_invalid_payload" });
+    return new Response("ok", { status: 200 });
   }
 
   after(async () => {
