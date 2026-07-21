@@ -24,7 +24,7 @@ async function isDuplicateRequest(requestId: string): Promise<boolean> {
   if (error) {
     log({
       level: "error",
-      event: "monnify_webhook_idempotency_check_failed",
+      event: "webhook_idempotency_check_failed",
       merchantTxRef: requestId,
       error: error.message,
     });
@@ -49,7 +49,7 @@ async function recordWebhookEvent(
     }
     log({
       level: "error",
-      event: "monnify_webhook_event_persist_failed",
+      event: "webhook_event_persist_failed",
       merchantTxRef: requestId,
       eventType,
       error: error.message,
@@ -59,7 +59,7 @@ async function recordWebhookEvent(
 
   log({
     level: "info",
-    event: "monnify_webhook_event_recorded",
+    event: "webhook_event_recorded",
     merchantTxRef: requestId,
     eventType,
   });
@@ -68,45 +68,40 @@ async function recordWebhookEvent(
 }
 
 async function handleVaultFunded(
-  event: MonnifyWebhookEvent,
-  requestId: string
+  payload: MonnifyWebhookEvent,
 ): Promise<void> {
-  const data = parseTransactionEventData(event.eventData);
+  const data = parseTransactionEventData(payload.eventData);
   if (!data) {
     log({
       level: "warn",
-      event: "monnify_webhook_invalid_payload",
-      merchantTxRef: requestId,
-      eventType: event.eventType,
+      event: "webhook_invalid_payload",
+      merchantTxRef: "unknown",
+      eventType: payload.eventType,
     });
     return;
   }
 
-  // Account number is what identifies the vault
-  const accountNumber =
-    data.destinationAccountInformation?.accountNumber ||
-    data.product?.reference ||
-    "";
-
+  const accountNumber = data.destinationAccountInformation?.accountNumber;
   if (!accountNumber) {
     log({
       level: "warn",
-      event: "monnify_webhook_missing_account_number",
+      event: "webhook_missing_account_number",
       merchantTxRef: data.transactionReference,
+      eventType: payload.eventType,
     });
     return;
   }
 
   const { data: vault, error: vaultError } = await getServiceClient()
     .from("vaults")
-    .select("id, quorum, revenue_account_number, capital_account_number")
-    .or(`revenue_account_number.eq.${accountNumber},capital_account_number.eq.${accountNumber}`)
+    .select("id, quorum")
+    .eq("nomba_virtual_account_number", accountNumber) // using the same DB column mapping
     .maybeSingle();
 
   if (vaultError) {
     log({
       level: "error",
-      event: "monnify_webhook_vault_lookup_failed",
+      event: "webhook_vault_lookup_failed",
       merchantTxRef: data.transactionReference,
       accountNumber,
       error: vaultError.message,
@@ -117,7 +112,7 @@ async function handleVaultFunded(
   if (!vault) {
     log({
       level: "warn",
-      event: "monnify_webhook_vault_not_found",
+      event: "webhook_vault_not_found",
       merchantTxRef: data.transactionReference,
       accountNumber,
     });
@@ -127,27 +122,26 @@ async function handleVaultFunded(
   const { data: existingTx } = await getServiceClient()
     .from("transactions")
     .select("id")
-    .eq("monnify_tx_ref", data.transactionReference)
+    .eq("nomba_tx_ref", data.transactionReference)
     .maybeSingle();
 
   if (existingTx) {
     log({
       level: "warn",
-      event: "monnify_webhook_duplicate_tx_ref",
+      event: "webhook_duplicate_tx_ref",
       merchantTxRef: data.transactionReference,
       vaultId: vault.id,
     });
     return;
   }
 
-  // Amount is in Naira from Monnify, we need Kobo
   const amountKobo = Math.round(data.amountPaid * 100);
 
   const balanceResult = await incrementVaultBalanceKobo(vault.id, amountKobo);
   if (!balanceResult.ok) {
     log({
       level: "error",
-      event: "monnify_webhook_balance_update_failed",
+      event: "webhook_balance_update_failed",
       merchantTxRef: data.transactionReference,
       vaultId: vault.id,
       error: balanceResult.error,
@@ -155,34 +149,28 @@ async function handleVaultFunded(
     return;
   }
 
-  // Determine inflow type
-  const accountType =
-    accountNumber === vault.capital_account_number ? "capital" : "revenue";
-
   const now = new Date().toISOString();
   const { error: txError } = await getServiceClient().from("transactions").insert({
     id: makeId("TX"),
     vault_id: vault.id,
-    recipient_name: "Vault funding",
+    recipient_name: data.customer?.name || "Vault funding",
     recipient_account: accountNumber,
     amount_kobo: amountKobo,
-    memo: "Vault funded via Monnify",
-    narration: data.paymentDescription || "Vault funded",
+    memo: data.paymentDescription || "Vault funded via Monnify",
+    narration: "Vault funded",
     requested_by: null,
     requested_at: now,
     status: "settled",
     required_quorum: vault.quorum,
     settled_at: now,
-    monnify_tx_ref: data.transactionReference,
-    inflow_account_type: accountType,
-    is_inflow: true,
+    nomba_tx_ref: data.transactionReference, // Storing Monnify reference here
   });
 
   if (txError) {
     if (txError.code === "23505") {
       log({
         level: "warn",
-        event: "monnify_webhook_duplicate_tx_ref_on_insert",
+        event: "webhook_duplicate_tx_ref_on_insert",
         merchantTxRef: data.transactionReference,
         vaultId: vault.id,
       });
@@ -190,7 +178,7 @@ async function handleVaultFunded(
     }
     log({
       level: "error",
-      event: "monnify_webhook_funding_tx_insert_failed",
+      event: "webhook_funding_tx_insert_failed",
       merchantTxRef: data.transactionReference,
       vaultId: vault.id,
       error: txError.message,
@@ -200,27 +188,24 @@ async function handleVaultFunded(
 
   log({
     level: "info",
-    event: "monnify_webhook_vault_funded",
+    event: "webhook_vault_funded",
     merchantTxRef: data.transactionReference,
     vaultId: vault.id,
-    amountNaira: data.amountPaid,
-    amountKobo,
+    amount: data.amountPaid,
     newBalance: balanceResult.newBalance,
-    accountType,
   });
 }
 
-async function handleTransferSuccess(
-  event: MonnifyWebhookEvent,
-  requestId: string
+async function handleDisbursementSuccess(
+  payload: MonnifyWebhookEvent,
 ): Promise<void> {
-  const data = parseDisbursementEventData(event.eventData);
+  const data = parseDisbursementEventData(payload.eventData);
   if (!data) {
     log({
       level: "warn",
-      event: "monnify_webhook_invalid_payload",
-      merchantTxRef: requestId,
-      eventType: event.eventType,
+      event: "webhook_invalid_payload",
+      merchantTxRef: "unknown",
+      eventType: payload.eventType,
     });
     return;
   }
@@ -228,13 +213,13 @@ async function handleTransferSuccess(
   const { data: tx, error: txError } = await getServiceClient()
     .from("transactions")
     .select("id, status")
-    .eq("monnify_tx_ref", data.reference)
+    .eq("nomba_tx_ref", data.reference)
     .maybeSingle();
 
   if (txError) {
     log({
       level: "error",
-      event: "monnify_webhook_transfer_success_lookup_failed",
+      event: "webhook_transfer_success_lookup_failed",
       merchantTxRef: data.reference,
       error: txError.message,
     });
@@ -244,7 +229,7 @@ async function handleTransferSuccess(
   if (!tx) {
     log({
       level: "warn",
-      event: "monnify_webhook_transfer_tx_not_found",
+      event: "webhook_transfer_tx_not_found",
       merchantTxRef: data.reference,
     });
     return;
@@ -265,7 +250,7 @@ async function handleTransferSuccess(
   if (updateError) {
     log({
       level: "error",
-      event: "monnify_webhook_transfer_settle_failed",
+      event: "webhook_transfer_settle_failed",
       merchantTxRef: data.reference,
       transactionId: tx.id,
       error: updateError.message,
@@ -275,23 +260,22 @@ async function handleTransferSuccess(
 
   log({
     level: "info",
-    event: "monnify_webhook_transfer_settled",
+    event: "webhook_transfer_settled",
     merchantTxRef: data.reference,
     transactionId: tx.id,
   });
 }
 
-async function handleTransferFailed(
-  event: MonnifyWebhookEvent,
-  requestId: string
+async function handleDisbursementFailed(
+  payload: MonnifyWebhookEvent,
 ): Promise<void> {
-  const data = parseDisbursementEventData(event.eventData);
+  const data = parseDisbursementEventData(payload.eventData);
   if (!data) {
     log({
       level: "warn",
-      event: "monnify_webhook_invalid_payload",
-      merchantTxRef: requestId,
-      eventType: event.eventType,
+      event: "webhook_invalid_payload",
+      merchantTxRef: "unknown",
+      eventType: payload.eventType,
     });
     return;
   }
@@ -299,13 +283,13 @@ async function handleTransferFailed(
   const { data: tx, error: txError } = await getServiceClient()
     .from("transactions")
     .select("id, vault_id, status")
-    .eq("monnify_tx_ref", data.reference)
+    .eq("nomba_tx_ref", data.reference)
     .maybeSingle();
 
   if (txError) {
     log({
       level: "error",
-      event: "monnify_webhook_transfer_failed_lookup_failed",
+      event: "webhook_transfer_failed_lookup_failed",
       merchantTxRef: data.reference,
       error: txError.message,
     });
@@ -315,7 +299,7 @@ async function handleTransferFailed(
   if (!tx) {
     log({
       level: "warn",
-      event: "monnify_webhook_transfer_tx_not_found",
+      event: "webhook_transfer_tx_not_found",
       merchantTxRef: data.reference,
     });
     return;
@@ -325,13 +309,12 @@ async function handleTransferFailed(
     return;
   }
 
-  // Reverse Kobo back into vault
   const refundAmountKobo = Math.round(data.amount * 100);
   const refundResult = await incrementVaultBalanceKobo(tx.vault_id, refundAmountKobo);
   if (!refundResult.ok) {
     log({
       level: "error",
-      event: "monnify_webhook_transfer_refund_failed",
+      event: "webhook_transfer_refund_failed",
       merchantTxRef: data.reference,
       vaultId: tx.vault_id,
       error: refundResult.error,
@@ -347,7 +330,7 @@ async function handleTransferFailed(
   if (updateError) {
     log({
       level: "error",
-      event: "monnify_webhook_transfer_mark_failed_failed",
+      event: "webhook_transfer_mark_failed_failed",
       merchantTxRef: data.reference,
       transactionId: tx.id,
       error: updateError.message,
@@ -357,95 +340,89 @@ async function handleTransferFailed(
 
   log({
     level: "info",
-    event: "monnify_webhook_transfer_failed_refunded",
+    event: "webhook_transfer_failed_refunded",
     merchantTxRef: data.reference,
     vaultId: tx.vault_id,
-    amountNaira: data.amount,
-    refundAmountKobo,
+    amount: data.amount,
     newBalance: refundResult.newBalance,
   });
 }
 
-async function processMonnifyEvent(
-  event: MonnifyWebhookEvent,
-  requestId: string
-): Promise<void> {
+async function processMonnifyEvent(payload: MonnifyWebhookEvent): Promise<void> {
+  // Extract a stable requestId for idempotency
+  let requestId = "";
+  if (payload.eventType === "SUCCESSFUL_TRANSACTION") {
+    const data = parseTransactionEventData(payload.eventData);
+    requestId = data?.transactionReference || `TX-${Date.now()}`;
+  } else if (payload.eventType.includes("DISBURSEMENT")) {
+    const data = parseDisbursementEventData(payload.eventData);
+    requestId = data?.reference || `DSB-${Date.now()}`;
+  } else {
+    requestId = `EVT-${Date.now()}`;
+  }
+
   try {
-    const inserted = await recordWebhookEvent(requestId, event.eventType);
+    const inserted = await recordWebhookEvent(requestId, payload.eventType);
     if (!inserted) {
       log({
         level: "warn",
-        event: "monnify_webhook_duplicate_request",
+        event: "webhook_duplicate_request",
         merchantTxRef: requestId,
-        eventType: event.eventType,
+        eventType: payload.eventType,
       });
       return;
     }
 
-    switch (event.eventType) {
+    switch (payload.eventType) {
       case "SUCCESSFUL_TRANSACTION":
-        await handleVaultFunded(event, requestId);
+        await handleVaultFunded(payload);
         break;
       case "SUCCESSFUL_DISBURSEMENT":
-        await handleTransferSuccess(event, requestId);
+        await handleDisbursementSuccess(payload);
         break;
       case "FAILED_DISBURSEMENT":
       case "REVERSED_DISBURSEMENT":
-        await handleTransferFailed(event, requestId);
+        await handleDisbursementFailed(payload);
         break;
       default:
         log({
           level: "info",
-          event: "monnify_webhook_unhandled_event",
+          event: "webhook_unhandled_event",
           merchantTxRef: requestId,
-          eventType: event.eventType,
+          eventType: payload.eventType,
         });
     }
   } catch (err) {
     log({
       level: "error",
-      event: "monnify_webhook_processing_error",
+      event: "webhook_processing_error",
       merchantTxRef: requestId,
-      eventType: event.eventType,
+      eventType: payload.eventType,
       error: err instanceof Error ? err.message : String(err),
     });
   }
 }
 
 export async function POST(request: Request) {
-  const rawBody = Buffer.from(await request.arrayBuffer());
-
+  const rawBody = await request.text();
   const signature = request.headers.get("monnify-signature");
 
   if (!signature) {
     return new Response("missing headers", { status: 400 });
   }
 
-  // Monnify computes HMAC-SHA512 of the raw body using the Client Secret
-  const expected = crypto
+  const expectedSignature = crypto
     .createHmac("sha512", getMonnifySecretKey())
     .update(rawBody)
     .digest("hex");
 
-  let signaturesMatch = false;
-  try {
-    // Both standard hex representations should be compared safely
-    signaturesMatch = crypto.timingSafeEqual(
-      Buffer.from(signature, "hex"),
-      Buffer.from(expected, "hex")
-    );
-  } catch {
-    // If length mismatch or invalid hex, catch block runs
-    signaturesMatch = false;
-  }
-
-  if (!signaturesMatch) {
+  if (signature !== expectedSignature) {
     return new Response("bad signature", { status: 401 });
   }
 
   let parsed: unknown;
   try {
-    parsed = JSON.parse(rawBody.toString());
+    parsed = JSON.parse(rawBody);
   } catch {
     return new Response("invalid json", { status: 400 });
   }
@@ -455,21 +432,8 @@ export async function POST(request: Request) {
     return new Response("invalid payload", { status: 400 });
   }
 
-  // Attempt to extract a unique request ID from the eventData
-  const eventDataRaw = payload.eventData as Record<string, unknown>;
-  const requestId = String(
-    eventDataRaw.transactionReference ||
-    eventDataRaw.reference ||
-    eventDataRaw.paymentReference ||
-    `unknown-${Date.now()}`
-  );
-
-  if (await isDuplicateRequest(requestId)) {
-    return new Response("ok", { status: 200 });
-  }
-
   after(async () => {
-    await processMonnifyEvent(payload, requestId);
+    await processMonnifyEvent(payload);
   });
 
   return new Response("ok", { status: 200 });
