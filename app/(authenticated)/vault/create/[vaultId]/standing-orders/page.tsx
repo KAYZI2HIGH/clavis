@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, use } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
@@ -15,10 +15,10 @@ type OrderBuilder = {
   plain_language: string;
 };
 
-export default function CreateStandingOrdersPage({ params }: { params: { vaultId: string } }) {
+export default function CreateStandingOrdersPage({ params }: { params: Promise<{ vaultId: string }> }) {
   const router = useRouter();
   const qc = useQueryClient();
-  const vaultId = params.vaultId;
+  const { vaultId } = use(params);
 
   const [orders, setOrders] = useState<OrderBuilder[]>([]);
   const [loading, setLoading] = useState(false);

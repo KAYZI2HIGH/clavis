@@ -189,7 +189,7 @@ function SettingsInvite({ vault, vaultId }: { vault: Vault; vaultId: string }) {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const activeLinkToken = vault.linkInvitations?.find((li) => li.status === "pending")?.token;
+  const activeLinkToken = vault.linkInvitations?.[0]?.token;
 
   const inviteUrl = activeLinkToken
     ? `${typeof window !== "undefined" ? window.location.origin : ""}/join-vault?token=${activeLinkToken}`
@@ -225,7 +225,7 @@ function SettingsInvite({ vault, vaultId }: { vault: Vault; vaultId: string }) {
     if (!name.trim() || !email.trim()) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/vaults/${vaultId}/invites/email`, {
+      const res = await fetch(`/api/vaults/${vaultId}/invite`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: name.trim(), email: email.trim() }),

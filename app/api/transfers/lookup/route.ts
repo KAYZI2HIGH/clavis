@@ -1,5 +1,4 @@
-import { NombaApiError } from "@/lib/nomba/client";
-import { lookupRecipient } from "@/lib/nomba/transfers";
+import { validateBankAccount } from "@/lib/monnify/transfers";
 import { log } from "@/lib/logger";
 
 export const runtime = "nodejs";
@@ -29,15 +28,13 @@ export async function POST(request: Request) {
   }
 
   try {
-    const recipient = await lookupRecipient({ accountNumber, bankCode });
+    const recipient = await validateBankAccount(accountNumber, bankCode);
     return Response.json(recipient);
   } catch (err) {
     const message =
-      err instanceof NombaApiError
-        ? "Could not verify account details. Check the account number and bank code."
-        : err instanceof Error
-          ? err.message
-          : "Recipient lookup failed";
+      err instanceof Error && err.message.includes("Failed")
+        ? err.message
+        : "Could not verify account details. Check the account number and bank code.";
 
     log({
       level: "warn",

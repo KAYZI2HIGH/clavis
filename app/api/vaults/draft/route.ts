@@ -82,13 +82,14 @@ export async function POST(request: Request) {
 
   // 3. Create an active link invitation matching the vaultId so operators can join
   const { error: linkError } = await getServiceClient()
-    .from("link_invitations")
+    .from("vault_invites")
     .insert({
       id: makeId("link"),
       vault_id: vaultId,
-      token: vaultId, // token is the vaultId for simplicity in v2
+      invite_code: vaultId, // token is the vaultId for simplicity in v2
       invited_by: investorStakeholderId,
       status: "pending",
+      role: "operator",
       created_at: new Date().toISOString(),
     });
 

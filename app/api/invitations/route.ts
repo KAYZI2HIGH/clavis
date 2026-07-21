@@ -15,11 +15,11 @@ export async function GET(request: Request) {
     return Response.json({ error: "Token is required" }, { status: 400 });
   }
 
-  // Find the link_invitations row by token
+  // Find the vault_invites row by token
   const { data: invite, error: inviteErr } = await getServiceClient()
-    .from("link_invitations")
-    .select("id, vault_id, token, placeholder, invited_by, status")
-    .eq("token", token)
+    .from("vault_invites")
+    .select("id, vault_id, invite_code, invited_by, status")
+    .eq("invite_code", token)
     .single();
 
   if (inviteErr || !invite) {
@@ -29,7 +29,7 @@ export async function GET(request: Request) {
   // Fetch vault info (allow draft vaults too — user can join during creation flow)
   const { data: vault, error: vaultErr } = await getServiceClient()
     .from("vaults")
-    .select("id, name, quorum, status, founder_id")
+    .select("id, name, quorum, status, founder_id, investment_type, investor_profit_share, investor_monthly_fixed, investor_return_cap, term_duration_months")
     .eq("id", invite.vault_id)
     .single();
 
@@ -50,12 +50,20 @@ export async function GET(request: Request) {
     .select("id, name, email, phone")
     .eq("vault_id", invite.vault_id);
 
+  // Fetch standing orders
+  const { data: standingOrdersData } = await getServiceClient()
+    .from("standing_orders")
+    .select("id, plain_language, action")
+    .eq("vault_id", invite.vault_id)
+    .neq("status", "deleted")
+    .neq("status", "rejected");
+
   const stakeholderCount = stakeholdersData?.length ?? 1;
 
   return Response.json({
     invite: {
       id: invite.id,
-      token: invite.token,
+      token: invite.invite_code,
       status: invite.status,
     },
     vault: {
@@ -65,6 +73,14 @@ export async function GET(request: Request) {
       status: vault.status,
       stakeholderCount,
       stakeholders: stakeholdersData ?? [],
+      investmentTerms: {
+        investment_type: vault.investment_type,
+        investor_profit_share: vault.investor_profit_share,
+        investor_monthly_fixed: vault.investor_monthly_fixed,
+        investor_return_cap: vault.investor_return_cap,
+        term_duration_months: vault.term_duration_months,
+      },
+      standingOrders: standingOrdersData ?? [],
     },
     inviter: inviter
       ? { id: inviter.id, name: inviter.name, initials: inviter.initials }
@@ -92,9 +108,9 @@ export async function POST(request: Request) {
 
   // Find the invitation
   const { data: invite, error: inviteErr } = await getServiceClient()
-    .from("link_invitations")
+    .from("vault_invites")
     .select("id, vault_id, status")
-    .eq("token", token)
+    .eq("invite_code", token)
     .single();
 
   if (inviteErr || !invite) {

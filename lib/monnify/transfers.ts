@@ -55,3 +55,33 @@ export async function initiateTransfer(
     }
   );
 }
+
+export type MonnifyAccountValidationResponse = {
+  requestSuccessful: boolean;
+  responseMessage: string;
+  responseCode: string;
+  responseBody: {
+    accountNumber: string;
+    accountName: string;
+    bankCode: string;
+  };
+};
+
+export async function validateBankAccount(
+  accountNumber: string,
+  bankCode: string
+): Promise<{ accountName: string; accountNumber: string; bankCode: string }> {
+  const res = await monnifyFetch<MonnifyAccountValidationResponse>(
+    `/api/v2/disbursements/account/validate?accountNumber=${accountNumber}&bankCode=${bankCode}`,
+    {
+      method: "GET",
+      merchantTxRef: `VAL-${accountNumber}-${bankCode}-${Date.now()}`,
+    }
+  );
+
+  if (!res.requestSuccessful || !res.responseBody?.accountName) {
+    throw new Error(res.responseMessage || "Failed to validate account details");
+  }
+
+  return res.responseBody;
+}

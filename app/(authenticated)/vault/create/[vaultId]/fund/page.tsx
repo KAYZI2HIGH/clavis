@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, use, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { CreateStepShell, RequireDraft } from "../../_components/create-step-shell";
 import { toast } from "sonner";
 import { Loader2, Copy, CheckCircle2 } from "lucide-react";
 
-export default function CreateFundPage({ params }: { params: { vaultId: string } }) {
+export default function CreateFundPage({ params }: { params: Promise<{ vaultId: string }> }) {
   const router = useRouter();
-  const vaultId = params.vaultId;
+  const { vaultId } = use(params);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -17,7 +17,12 @@ export default function CreateFundPage({ params }: { params: { vaultId: string }
   const [capitalAccount, setCapitalAccount] = useState<{accountNumber: string, bankName: string} | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
 
+  const fetchedRef = useRef(false);
+
   useEffect(() => {
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
+
     const fetchAccounts = async () => {
       try {
         const res = await fetch(`/api/vaults/${vaultId}/fund`, { method: "POST" });

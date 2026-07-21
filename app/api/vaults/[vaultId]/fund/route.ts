@@ -64,18 +64,19 @@ export async function POST(
   try {
     // 3 & 4. Call createRevenueAccount and createCapitalAccount from Monnify
     // We use createReservedAccount from lib/monnify/accounts.ts
+    const suffix = Math.random().toString(36).substring(2, 8);
     const [revenueRes, capitalRes] = await Promise.all([
       createReservedAccount({
-        accountReference: `REV-${vaultId}`,
+        accountReference: `REV-${vaultId}-${suffix}`,
         accountName: `${vault.name} Revenue`,
-        customerEmail: email ?? "support@clavis.com",
-        customerName: session.user.name ?? "Vault Investor",
+        customerEmail: `rev-${vaultId}@clavis.com`,
+        customerName: `${session.user.name} (Revenue)`,
       }),
       createReservedAccount({
-        accountReference: `CAP-${vaultId}`,
+        accountReference: `CAP-${vaultId}-${suffix}`,
         accountName: `${vault.name} Capital`,
-        customerEmail: email ?? "support@clavis.com",
-        customerName: session.user.name ?? "Vault Investor",
+        customerEmail: `cap-${vaultId}@clavis.com`,
+        customerName: `${session.user.name} (Capital)`,
       })
     ]);
 

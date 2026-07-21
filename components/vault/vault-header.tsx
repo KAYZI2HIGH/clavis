@@ -132,21 +132,22 @@ export function VaultHeader({
           </p>
         </div>
 
-        <div className="sm:ml-auto">
-          <p className="engraved mb-2">Funding Account</p>
-          {vault.revenue_account_number ?
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
-              <span
-                className="serif text-xl sm:text-3xl text-ink tracking-tight break-all sm:break-normal"
-                style={{ fontVariantNumeric: "tabular-nums oldstyle-nums" }}
-              >
-                {vault.revenue_account_number}
-              </span>
-              {vault.revenue_account_bank && (
-                <span className="text-xs text-ink-faint">
-                  ({vault.revenue_account_bank})
+        <div className="sm:ml-auto flex gap-6 sm:gap-10">
+          <div>
+            <p className="engraved mb-2">Revenue Account</p>
+            {vault.revenue_account_number ?
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
+                <span
+                  className="serif text-xl sm:text-2xl text-ink tracking-tight break-all sm:break-normal"
+                  style={{ fontVariantNumeric: "tabular-nums oldstyle-nums" }}
+                >
+                  {vault.revenue_account_number}
                 </span>
-              )}
+                {vault.revenue_account_bank && (
+                  <span className="text-xs text-ink-faint">
+                    ({vault.revenue_account_bank})
+                  </span>
+                )}
               <button
                 className="btn-mech btn-mech-ghost text-[10px] py-1 px-2 uppercase tracking-wider"
                 onClick={async () => {
@@ -162,27 +163,64 @@ export function VaultHeader({
                 {copied ? "Copied" : "Copy"}
               </button>
             </div>
-          : isFounder ? (
-              <div>
-                <p className="engraved text-ink-faint">
-                  Account details unavailable.
-                </p>
-                <button
-                  className="btn-mech btn-mech-ghost text-xs mt-2 flex items-center justify-center gap-1.5 w-full sm:w-auto"
-                  onClick={handleRetryVA}
-                  disabled={retryVA.isPending}
+            : isFounder ? (
+                <div>
+                  <p className="engraved text-ink-faint">
+                    Account details unavailable.
+                  </p>
+                  <button
+                    className="btn-mech btn-mech-ghost text-xs mt-2 flex items-center justify-center gap-1.5 w-full sm:w-auto"
+                    onClick={handleRetryVA}
+                    disabled={retryVA.isPending}
+                  >
+                    {retryVA.isPending ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      "Retry setup"
+                    )}
+                  </button>
+                </div>
+              ) : (
+                <p className="text-sm text-ink-faint">Account details pending...</p>
+              )
+            }
+          </div>
+
+          <div>
+            <p className="engraved mb-2">Capital Account</p>
+            {vault.capital_account_number ?
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
+                <span
+                  className="serif text-xl sm:text-2xl text-ink tracking-tight break-all sm:break-normal"
+                  style={{ fontVariantNumeric: "tabular-nums oldstyle-nums" }}
                 >
-                  {retryVA.isPending ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    "Retry account setup"
-                  )}
+                  {vault.capital_account_number}
+                </span>
+                {vault.capital_account_bank && (
+                  <span className="text-xs text-ink-faint">
+                    ({vault.capital_account_bank})
+                  </span>
+                )}
+                <button
+                  className="btn-mech btn-mech-ghost text-[10px] py-1 px-2 uppercase tracking-wider"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(vault.capital_account_number ?? "");
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 1500);
+                    } catch {
+                      // Ignore
+                    }
+                  }}
+                >
+                  {copied ? "Copied" : "Copy"}
                 </button>
               </div>
-            ) : (
-              <p className="text-sm text-ink-faint">Account details pending...</p>
-            )
-          }
+            : (
+                <p className="text-sm text-ink-faint">Account details pending...</p>
+              )
+            }
+          </div>
         </div>
       </div>
     </header>

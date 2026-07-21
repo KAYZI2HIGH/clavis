@@ -5,6 +5,7 @@ import { getMonnifyEnvironment } from "@/lib/monnify/env";
 import { getServiceClient } from "@/lib/supabase/service";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 type HealthResponse = {
   status: "ok" | "degraded";
@@ -23,15 +24,22 @@ type HealthResponse = {
 async function checkSupabase(): Promise<"connected" | "error"> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return "error";
+  if (!url || !key) {
+    console.error("Supabase missing url or key");
+    return "error";
+  }
 
   try {
     const { error } = await getServiceClient()
       .from("vaults")
       .select("id", { count: "exact", head: true });
 
+    if (error) {
+      console.error("Supabase health check error:", error, "URL:", url);
+    }
     return error ? "error" : "connected";
-  } catch {
+  } catch (err) {
+    console.error("Supabase health check caught exception:", err, "URL:", url);
     return "error";
   }
 }

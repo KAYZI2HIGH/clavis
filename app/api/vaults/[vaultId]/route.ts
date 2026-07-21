@@ -131,8 +131,8 @@ export async function PATCH(
   const [stakeholdersRes, linkInvitesRes, emailInvitesRes, pendingJoinsRes, vaultRes] =
     await Promise.all([
       getServiceClient().from("stakeholders").select("*").eq("vault_id", vaultId),
-      getServiceClient().from("link_invitations").select("*").eq("vault_id", vaultId),
-      getServiceClient().from("email_invites").select("*").eq("vault_id", vaultId),
+      getServiceClient().from("vault_invites").select("*").eq("vault_id", vaultId).is("email", null),
+      getServiceClient().from("vault_invites").select("*").eq("vault_id", vaultId).not("email", "is", null),
       getServiceClient().from("pending_joins").select("*").eq("vault_id", vaultId),
       getServiceClient().from("vaults").select("*").eq("id", vaultId).single(),
     ]);
@@ -165,17 +165,17 @@ export async function PATCH(
     transactions: [],
     linkInvitations: (linkInvitesRes.data ?? []).map((li) => ({
       id: li.id,
-      token: li.token,
-      placeholder: li.placeholder,
+      token: li.invite_code,
+      placeholder: "",
       invitedBy: li.invited_by,
       status: li.status as "pending" | "accepted" | "declined",
       createdAt: new Date(li.created_at).getTime(),
     })),
     emailInvites: (emailInvitesRes.data ?? []).map((ei) => ({
       id: ei.id,
-      name: ei.name,
+      name: ei.email,
       email: ei.email,
-      initials: ei.initials,
+      initials: ei.email.substring(0, 2).toUpperCase(),
       invitedBy: ei.invited_by,
       createdAt: new Date(ei.created_at).getTime(),
       status: ei.status as "pending" | "accepted",
@@ -240,7 +240,7 @@ export async function GET(
   // Fetch vault
   const { data: vault } = await getServiceClient()
     .from("vaults")
-    .select("*")
+    .select("*, investment_terms:investment_type, investor_profit_share, investor_monthly_fixed, investor_return_cap, term_duration_months, settlement_day")
     .eq("id", vaultId)
     .maybeSingle();
 
@@ -271,23 +271,47 @@ export async function GET(
     .eq("vault_id", vaultId)
     .order("requested_at", { ascending: false });
 
-  // Fetch link invitations
+  // Fetch link invitations (vault_invites where email is null)
   const { data: linkInvitations } = await getServiceClient()
-    .from("link_invitations")
+    .from("vault_invites")
     .select("*")
-    .eq("vault_id", vaultId);
+    .eq("vault_id", vaultId)
+    .is("email", null);
 
-  // Fetch email invites
+  // Fetch email invites (vault_invites where email is not null)
   const { data: emailInvites } = await getServiceClient()
-    .from("email_invites")
+    .from("vault_invites")
     .select("*")
-    .eq("vault_id", vaultId);
+    .eq("vault_id", vaultId)
+    .not("email", "is", null);
 
   // Fetch pending joins
   const { data: pendingJoins } = await getServiceClient()
     .from("pending_joins")
     .select("*")
     .eq("vault_id", vaultId);
+
+  // Fetch active standing orders
+  const { data: standingOrders } = await getServiceClient()
+    .from("standing_orders")
+    .select("*")
+    .eq("vault_id", vaultId)
+    .eq("status", "active");
+
+  // Fetch last 3 settlements
+  const { data: settlements } = await getServiceClient()
+    .from("settlements")
+    .select("*")
+    .eq("vault_id", vaultId)
+    .order("created_at", { ascending: false })
+    .limit(3);
+
+  // Fetch flagged inflow classifications
+  const { data: inflowClassifications } = await getServiceClient()
+    .from("inflow_classifications")
+    .select("*")
+    .eq("vault_id", vaultId)
+    .eq("flagged_for_review", true);
 
   return Response.json({
     vault: {
@@ -346,17 +370,17 @@ export async function GET(
       })),
       linkInvitations: (linkInvitations ?? []).map((li) => ({
         id: li.id,
-        token: li.token,
-        placeholder: li.placeholder,
+        token: li.invite_code,
+        placeholder: "",
         invitedBy: li.invited_by,
         status: li.status,
         createdAt: new Date(li.created_at).getTime(),
       })),
       emailInvites: (emailInvites ?? []).map((ei) => ({
         id: ei.id,
-        name: ei.name,
+        name: ei.email,
         email: ei.email,
-        initials: ei.initials,
+        initials: ei.email.substring(0, 2).toUpperCase(),
         invitedBy: ei.invited_by,
         createdAt: new Date(ei.created_at).getTime(),
         status: ei.status,
@@ -371,10 +395,28 @@ export async function GET(
       })),
       youId: membership.id,
       founderId: vault.founder_id,
-      balanceKobo: Number(vault.balance_kobo),
-      fundingAccount: vault.funding_account || vault.nomba_virtual_account_number || "",
+      investorId: vault.investor_id,
+      balance_kobo: Number(vault.balance_kobo),
+      funding_account: vault.funding_account || vault.nomba_virtual_account_number || "",
+      revenue_account_number: vault.revenue_account_number,
+      revenue_account_bank: vault.revenue_account_bank,
+      capital_account_number: vault.capital_account_number,
+      capital_account_bank: vault.capital_account_bank,
       nombaVirtualAccountBank: vault.nomba_virtual_account_bank || undefined,
       updatedAt: new Date(vault.updated_at).getTime(),
+      
+      // V2 Fields
+      standingOrders: standingOrders ?? [],
+      settlements: settlements ?? [],
+      inflowClassifications: inflowClassifications ?? [],
+      investmentTerms: {
+        investment_type: vault.investment_type,
+        investor_profit_share: vault.investor_profit_share,
+        investor_monthly_fixed: vault.investor_monthly_fixed,
+        investor_return_cap: vault.investor_return_cap,
+        term_duration_months: vault.term_duration_months,
+        settlement_day: vault.settlement_day,
+      }
     }
   });
 }

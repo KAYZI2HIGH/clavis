@@ -1,5 +1,12 @@
 export function requireEnv(name: string): string {
-  const value = process.env[name]?.trim();
+  let value: string | undefined;
+  if (name === "MONNIFY_API_KEY") value = process.env.MONNIFY_API_KEY;
+  else if (name === "MONNIFY_SECRET_KEY") value = process.env.MONNIFY_SECRET_KEY;
+  else if (name === "MONNIFY_CONTRACT_CODE") value = process.env.MONNIFY_CONTRACT_CODE;
+  else if (name === "MONNIFY_WALLET_ACCOUNT_NUMBER") value = process.env.MONNIFY_WALLET_ACCOUNT_NUMBER;
+  else value = process.env[name];
+  
+  value = value?.trim();
   if (!value) {
     throw new Error(`${name} is required but was not set`);
   }
@@ -29,8 +36,7 @@ export function getMonnifyEnvironment(): "test" | "live" {
   }
   
   const apiKey = process.env.MONNIFY_API_KEY?.toLowerCase() ?? "";
-  // Typically live keys don't have "TEST_"
-  if (apiKey && !apiKey.includes("test")) {
+  if (apiKey.includes("prod") || apiKey.includes("live")) {
     return "live";
   }
   
@@ -45,4 +51,12 @@ export function getMonnifyApiBaseUrl(): string {
   return getMonnifyEnvironment() === "test" 
     ? "https://sandbox.monnify.com" 
     : "https://api.monnify.com";
+}
+
+/** Called from instrumentation on server startup. */
+export function assertMonnifyConfigured(): void {
+  getMonnifySecretKey();
+  getMonnifyApiKey();
+  getMonnifyContractCode();
+  getMonnifyWalletAccountNumber();
 }

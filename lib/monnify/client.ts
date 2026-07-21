@@ -141,6 +141,8 @@ export async function getAccessToken(): Promise<string> {
       level: "error",
       event: "monnify_auth_failed",
       merchantTxRef,
+      url,
+      apiKeyPrefix: getMonnifyApiKey().substring(0, 10),
       statusCode: response.status,
       durationMs,
       error,

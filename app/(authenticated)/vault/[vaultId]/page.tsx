@@ -3,6 +3,7 @@
 import { use } from "react";
 import { useVaultQuery } from "@/hooks/use-vault-query";
 import { VaultDashboard } from "./_components/vault-dashboard";
+import { InvestorDashboard } from "./_components/investor-dashboard";
 import { VaultDashboardSkeleton } from "./_components/vault-dashboard-skeleton";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -44,5 +45,8 @@ export default function VaultPage({
     );
   }
 
+  const isInvestor = vault.investorId === vault.youId;
+
+  if (isInvestor) return <InvestorDashboard vault={vault} vaultId={vaultId} />;
   return <VaultDashboard vault={vault} vaultId={vaultId} />;
 }

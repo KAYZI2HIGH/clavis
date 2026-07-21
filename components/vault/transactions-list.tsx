@@ -23,12 +23,17 @@ function PendingKeyRow({
       onClick={() => onOpen(tx.id)}
       className="w-full px-4 sm:px-6 py-4 border-b hairline text-left hover:bg-secondary/60 transition-colors"
     >
-      <div className="sm:grid sm:grid-cols-[1fr_140px_140px_120px_120px] sm:items-center">
+      <div className="sm:grid sm:grid-cols-[1fr_120px_140px_140px_120px_120px] sm:items-center gap-2">
         <div>
-          <p className="text-sm text-ink">{tx.recipient_name}</p>
-          <p className="mono text-xs text-ink-faint mt-0.5">
-            {tx.id} · Requested by {requester?.initials}
+          <p className="text-sm text-ink">{tx.is_inflow ? (tx.narration || "Inflow") : tx.recipient_name}</p>
+          <p className="mono text-xs text-ink-faint mt-0.5 truncate max-w-[200px]">
+            {tx.id} · Req. by {requester?.initials} · {tx.memo || tx.narration || "—"}
           </p>
+        </div>
+        <div className="mt-1 sm:mt-0">
+          <span className={`text-[10px] font-bold tracking-wider px-1.5 py-0.5 border hairline ${tx.is_inflow ? (tx.inflow_account_type === 'capital' ? 'bg-indigo-50/50 text-indigo-700' : 'bg-emerald-50/50 text-emerald-700') : 'bg-amber-50/50 text-amber-700'}`}>
+            {tx.is_inflow ? (tx.inflow_account_type === 'capital' ? 'CAPITAL' : 'REVENUE') : 'PAYOUT'}
+          </span>
         </div>
         <p className="mono text-sm text-ink mt-1 sm:mt-0 text-right">{formatNGN(tx.amount_kobo)}</p>
         <p className="text-xs text-ink-muted mt-0.5 sm:mt-0">{formatTime(new Date(tx.requested_at).getTime())}</p>
@@ -95,8 +100,9 @@ export function TransactionsList({
       )}
 
       <div className="border-t hairline">
-        <div className="hidden sm:grid sm:grid-cols-[1fr_140px_140px_120px_120px] px-4 sm:px-6 py-3 border-b hairline">
-          <p className="engraved">Recipient</p>
+        <div className="hidden sm:grid sm:grid-cols-[1fr_120px_140px_140px_120px_120px] gap-2 px-4 sm:px-6 py-3 border-b hairline">
+          <p className="engraved">Details</p>
+          <p className="engraved">Type</p>
           <p className="engraved text-right">Amount</p>
           <p className="engraved">Requested</p>
           <p className="engraved">Keys</p>
@@ -112,12 +118,17 @@ export function TransactionsList({
                 isNew ? "bg-brass-soft/20 transition-all duration-1000" : ""
               }`}
             >
-              <div className="sm:grid sm:grid-cols-[1fr_140px_140px_120px_120px] sm:items-center">
+              <div className="sm:grid sm:grid-cols-[1fr_120px_140px_140px_120px_120px] sm:items-center gap-2">
                 <div>
-                  <p className="text-sm text-ink">{t.recipient_name}</p>
-                  <p className="mono text-xs text-ink-faint mt-0.5">
-                    {t.id} · {t.memo || "—"}
+                  <p className="text-sm text-ink">{t.is_inflow ? (t.narration || "Inflow") : t.recipient_name}</p>
+                  <p className="mono text-xs text-ink-faint mt-0.5 truncate max-w-[200px] sm:max-w-[250px]">
+                    {t.id} · {t.memo || t.narration || "—"}
                   </p>
+                </div>
+                <div className="mt-1 sm:mt-0">
+                  <span className={`text-[10px] font-bold tracking-wider px-1.5 py-0.5 border hairline ${t.is_inflow ? (t.inflow_account_type === 'capital' ? 'bg-indigo-50/50 text-indigo-700' : 'bg-emerald-50/50 text-emerald-700') : 'bg-amber-50/50 text-amber-700'}`}>
+                    {t.is_inflow ? (t.inflow_account_type === 'capital' ? 'CAPITAL' : 'REVENUE') : 'PAYOUT'}
+                  </span>
                 </div>
                 <p className="mono text-sm text-ink mt-1 sm:mt-0 text-right">
                   {formatNGN(t.amount_kobo)}

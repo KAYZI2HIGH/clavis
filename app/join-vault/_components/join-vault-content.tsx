@@ -18,6 +18,14 @@ type InviteData = {
     status: string;
     stakeholderCount: number;
     stakeholders: { id: string; name: string; email?: string; phone?: string }[];
+    investmentTerms: {
+      investment_type: string;
+      investor_profit_share?: number;
+      investor_monthly_fixed?: number;
+      investor_return_cap?: number;
+      term_duration_months?: number;
+    };
+    standingOrders: { id: string; plain_language: string; action: string }[];
   };
   inviter: { id: string; name: string; initials: string } | null;
 };
@@ -204,6 +212,44 @@ export function JoinVaultContent() {
                   </p>
                 </div>
               )}
+              
+              {data.vault.investmentTerms && data.vault.investmentTerms.investment_type && (
+                <div className="px-5 py-4 border-b hairline">
+                  <p className="engraved">Investment terms</p>
+                  <p className="text-sm text-ink mt-1">
+                    {data.vault.investmentTerms.investment_type === "profit_share" && (
+                      `Profit Share: ${data.vault.investmentTerms.investor_profit_share}% of net revenue pool`
+                    )}
+                    {data.vault.investmentTerms.investment_type === "fixed_return" && (
+                      `Fixed Return: ${data.vault.investmentTerms.investor_monthly_fixed} per month`
+                    )}
+                    {data.vault.investmentTerms.investment_type === "hybrid" && (
+                      `Hybrid: ${data.vault.investmentTerms.investor_profit_share}% profit share + ${data.vault.investmentTerms.investor_monthly_fixed} fixed`
+                    )}
+                    {data.vault.investmentTerms.investor_return_cap ? ` (Capped at ${data.vault.investmentTerms.investor_return_cap}x)` : ''}
+                  </p>
+                </div>
+              )}
+
+              {data.vault.standingOrders && data.vault.standingOrders.length > 0 && (
+                <div className="px-5 py-4 border-b hairline">
+                  <p className="engraved mb-2">Automated standing orders</p>
+                  <ul className="space-y-2">
+                    {data.vault.standingOrders.map((so) => (
+                      <li key={so.id} className="text-sm text-ink flex items-start gap-2">
+                        <span className="text-ink-muted mt-0.5">•</span>
+                        <span>
+                          {so.plain_language}
+                          <span className="ml-2 text-[10px] font-bold tracking-wider px-1.5 py-0.5 border hairline bg-secondary/30 whitespace-nowrap">
+                            {so.action.replace(/_/g, " ").toUpperCase()}
+                          </span>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               {data.vault.status === "draft" && (
                 <div className="px-5 py-4 border-b hairline">
                   <p className="text-xs text-ink-muted">
