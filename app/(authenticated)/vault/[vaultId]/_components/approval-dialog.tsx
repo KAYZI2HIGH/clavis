@@ -185,7 +185,14 @@ export function ApprovalDialog({
           ) : (
             <div className="px-6 pb-6 flex flex-col items-center">
               {userHasApproved ? (
-                <p className="text-sm text-ink-muted my-6">You have already approved this payout</p>
+                tx.standing_order_id ? (
+                  <div className="text-center my-6 space-y-1">
+                    <p className="text-sm text-ink font-medium">Standing Order Executed</p>
+                    <p className="text-xs text-ink-muted">Your approval was automatically granted by your active rule.</p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-ink-muted my-6">You have already approved this payout</p>
+                )
               ) : alreadyProcessed ? (
                 <p className="text-sm text-ink-muted my-6">This payout is already being processed</p>
               ) : tx.status === "declined" ? (

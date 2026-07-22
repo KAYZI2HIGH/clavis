@@ -200,5 +200,10 @@ export async function POST(
     }
   });
 
-  return Response.json({ transaction }, { status: 201 });
+  return Response.json({ 
+    transaction: {
+      ...transaction,
+      approvals: autoApproveUserId ? [autoApproveUserId] : []
+    }
+  }, { status: 201 });
 }

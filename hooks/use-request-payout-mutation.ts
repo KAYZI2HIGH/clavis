@@ -33,13 +33,29 @@ export function useRequestPayoutMutation(vaultId: string) {
       }
       return res.json();
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ 
-        queryKey: queryKeys.vaults.transactions(vaultId) 
-      });
-      qc.invalidateQueries({ 
-        queryKey: queryKeys.vaults.detail(vaultId) 
-      });
+    onSuccess: (data) => {
+      // Eagerly prepend the transaction
+      qc.setQueryData<import("@/lib/types").Vault>(
+        queryKeys.vaults.detail(vaultId),
+        (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            transactions: [data.transaction, ...(old.transactions ?? [])],
+          };
+        }
+      );
+
+      // Invalidate after delay for read replica
+      setTimeout(() => {
+        qc.invalidateQueries({ 
+          queryKey: queryKeys.vaults.transactions(vaultId) 
+        });
+        qc.invalidateQueries({ 
+          queryKey: queryKeys.vaults.detail(vaultId) 
+        });
+      }, 1500);
+
       toast.success("Payout request submitted.");
     },
     onError: (error: Error) => {
