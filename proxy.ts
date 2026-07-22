@@ -20,7 +20,11 @@ export default auth((req) => {
   }
 
   if (!isLoggedIn && isProtectedPage) {
-    return NextResponse.redirect(new URL("/sign-in", nextUrl));
+    const signInUrl = new URL("/sign-in", nextUrl);
+    if (nextUrl.searchParams.has("token")) {
+      signInUrl.searchParams.set("token", nextUrl.searchParams.get("token")!);
+    }
+    return NextResponse.redirect(signInUrl);
   }
 
   return NextResponse.next();

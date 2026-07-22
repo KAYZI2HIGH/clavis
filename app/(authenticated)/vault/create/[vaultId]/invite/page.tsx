@@ -8,6 +8,7 @@ import { CreateStepShell, RequireDraft } from "../../_components/create-step-she
 import { toast } from "sonner";
 import { KeyIcon } from "@/components/shared/key-icon";
 import { Copy, CheckCircle2 } from "lucide-react";
+import { useVaultRealtime } from "@/hooks/use-vault-realtime";
 import type { Vault } from "@/lib/types";
 
 export default function CreateInvitePage({ params }: { params: Promise<{ vaultId: string }> }) {
@@ -24,8 +25,9 @@ export default function CreateInvitePage({ params }: { params: Promise<{ vaultId
       if (!res.ok) throw new Error("Failed to fetch");
       return res.json();
     },
-    refetchInterval: 3000, // Poll every 3s to see new joins
   });
+
+  useVaultRealtime(vaultId);
 
   const inviteUrl = typeof window !== "undefined"
     ? `${window.location.origin}/join-vault?token=${vaultId}`

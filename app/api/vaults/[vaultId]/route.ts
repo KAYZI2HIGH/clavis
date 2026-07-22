@@ -108,23 +108,16 @@ export async function PATCH(
     return Response.json({ error: "Failed to found vault" }, { status: 500 });
   }
 
-  // Re-fetch vault to check Nomba VA status
+  // Re-fetch vault to check account status
   const { data: vaultRow } = await getServiceClient()
     .from("vaults")
-    .select("funding_account, name, nomba_virtual_account_number")
+    .select("revenue_account_number, name")
     .eq("id", vaultId)
     .single();
 
   // If VA wasn't created during the draft phase, retry now
-  if (!vaultRow?.nomba_virtual_account_number) {
-    createVirtualAccount({ vaultId, vaultName: vaultRow?.name ?? "" }).catch((err) => {
-      log({
-        level: "error",
-        event: "vault_found_nomba_failed",
-        vaultId,
-        error: err instanceof Error ? err.message : String(err),
-      });
-    });
+  if (!vaultRow?.revenue_account_number) {
+    // In V2, we might create Monnify accounts here, or maybe it's handled via a separate action.
   }
 
   // Fetch full vault data to return
@@ -160,8 +153,10 @@ export async function PATCH(
     youId: myStakeholder?.id ?? founderStakeholderId,
     founderId: v.founder_id ?? "",
     balanceKobo: Number(v.balance_kobo),
-    fundingAccount: v.funding_account || v.nomba_virtual_account_number || "",
-    nombaVirtualAccountBank: v.nomba_virtual_account_bank || undefined,
+    revenueAccountNumber: v.revenue_account_number,
+    revenueAccountBank: v.revenue_account_bank,
+    capitalAccountNumber: v.capital_account_number,
+    capitalAccountBank: v.capital_account_bank,
     transactions: [],
     linkInvitations: (linkInvitesRes.data ?? []).map((li) => ({
       id: li.id,
@@ -397,12 +392,10 @@ export async function GET(
       founderId: vault.founder_id,
       investorId: vault.investor_id,
       balance_kobo: Number(vault.balance_kobo),
-      funding_account: vault.funding_account || vault.nomba_virtual_account_number || "",
       revenue_account_number: vault.revenue_account_number,
       revenue_account_bank: vault.revenue_account_bank,
       capital_account_number: vault.capital_account_number,
       capital_account_bank: vault.capital_account_bank,
-      nombaVirtualAccountBank: vault.nomba_virtual_account_bank || undefined,
       updatedAt: new Date(vault.updated_at).getTime(),
       
       // V2 Fields

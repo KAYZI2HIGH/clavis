@@ -20,15 +20,14 @@ export default function WelcomePage() {
       {/* ── Hero ── */}
       <section className="max-w-6xl mx-auto px-4 sm:px-8 py-20 flex flex-col items-center text-center">
         <p className="engraved text-ink-faint tracking-widest">
-          BUILT FOR NIGERIAN BUSINESS PARTNERSHIPS
+          TRANSPARENT INVESTMENT VEHICLES
         </p>
         <h1 className="serif text-4xl sm:text-5xl md:text-6xl text-ink mt-5 leading-tight max-w-3xl">
-          A vault that opens only when its partners agree.
+          Run investment syndicates with absolute transparency.
         </h1>
         <p className="text-base sm:text-lg text-ink-muted mt-6 max-w-xl leading-relaxed">
-          Clavis is a shared business account for co-founders and business partners.
-          Pool funds, request payouts, and move money — but only when your team
-          turns their keys together.
+          Clavis is the operating system for Nigerian investment vehicles. Pool capital, 
+          automatically classify revenue, and execute profit settlements—all with built-in multi-party approval.
         </p>
         <div className="mt-10 flex flex-col sm:flex-row items-center gap-4">
           <Link href="/sign-up" className="btn-mech btn-mech-primary min-w-[180px] text-center">
@@ -39,7 +38,7 @@ export default function WelcomePage() {
           </Link>
         </div>
         <p className="engraved text-ink-faint mt-10 text-xs">
-          Powered by Nomba · Real Nigerian bank accounts · No single partner can act alone
+          Powered by Monnify · Real Nigerian bank accounts · Automated Profit Sharing
         </p>
       </section>
 
@@ -48,28 +47,25 @@ export default function WelcomePage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-8 py-20 sm:py-28">
           <p className="engraved text-ink-faint text-center">THE PROBLEM</p>
           <SectionHeading>
-            One person holds the account. Everyone else sends WhatsApp voice notes.
+            Managing pooled capital shouldn't rely on trust and spreadsheets.
           </SectionHeading>
           <div className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
             <div className="border hairline-strong bg-card p-6">
-              <p className="engraved text-ink mb-3">UNAUTHORIZED SPENDING</p>
+              <p className="engraved text-ink mb-3">BLIND SPOTS</p>
               <p className="text-sm text-ink-muted leading-relaxed">
-                A single partner can drain a shared account in seconds. No approval
-                needed. No trail left behind.
+                Investors send capital but have no visibility into how revenue is performing in real time. They only see what operators choose to report.
               </p>
             </div>
             <div className="border hairline-strong bg-card p-6">
-              <p className="engraved text-ink mb-3">NO AUDIT TRAIL</p>
+              <p className="engraved text-ink mb-3">MESSY SETTLEMENTS</p>
               <p className="text-sm text-ink-muted leading-relaxed">
-                WhatsApp messages aren&apos;t receipts. When money goes missing,
-                there&apos;s no record of who approved what.
+                Operators spend hours manually calculating profit shares, capital deductions, and sending individual payouts to investors.
               </p>
             </div>
             <div className="border hairline-strong bg-card p-6">
               <p className="engraved text-ink mb-3">BROKEN TRUST</p>
               <p className="text-sm text-ink-muted leading-relaxed">
-                Business partnerships collapse not from bad ideas but from bad
-                financial controls. Trust is hard to rebuild.
+                Lack of predefined rules and transparent ledgers causes friction between capital providers and operators. Trust is hard to rebuild.
               </p>
             </div>
           </div>
@@ -85,18 +81,18 @@ export default function WelcomePage() {
             {[
               {
                 num: "01",
-                title: "Found a vault",
-                text: "Create a shared vault, invite your partners, and set how many keys are needed to approve a payout.",
+                title: "Define the rules",
+                text: "Create a vault, define your investment terms (e.g., 60/40 profit split), and invite your investors to join the syndicate.",
               },
               {
                 num: "02",
-                title: "Pool funds",
-                text: "Your vault gets a real Nigerian bank account number. Partners transfer in from any bank. Balance updates in real time.",
+                title: "Pool & Track",
+                text: "Your vault gets a real Monnify virtual account. Capital flows in, and ongoing business revenue is automatically tracked.",
               },
               {
                 num: "03",
-                title: "Approve together",
-                text: "Anyone can request a payout. But funds don't move until the required number of partners turn their keys.",
+                title: "Run Settlements",
+                text: "Execute one-click settlements that automatically calculate the profit pool and disburse funds directly to all investors.",
               },
             ].map((step) => (
               <div key={step.num} className="text-center">
@@ -123,11 +119,11 @@ export default function WelcomePage() {
           <SectionHeading>Not a workaround. A real financial tool.</SectionHeading>
           <div className="mt-14 max-w-3xl mx-auto divide-y hairline border-t hairline">
             {[
-              "Real Nomba Virtual Account — a genuine NUBAN your partners can transfer to from any Nigerian bank",
-              "Multi-signatory approvals — quorum-based, every decision logged immutably",
-              "Real-time updates — balance and transactions sync instantly across all partners",
+              "Real Monnify Virtual Account — a genuine NUBAN your partners can transfer to from any Nigerian bank",
+              "Operator & Investor Roles — distinct dashboards with tailored permissions and visibility",
+              "Automated Profit Settlements — one-click disbursements calculated against predefined revenue splits",
+              "Smart Classifications — distinct tracking for Capital injections vs. Revenue streams",
               "Full audit trail — every approval, every decline, every transfer — permanently recorded",
-              "Nightly reconciliation — automatic drift detection against Nomba's transaction history",
               "Secure by design — no single point of failure, anon writes blocked at database level",
             ].map((text, i) => (
               <div
@@ -148,10 +144,10 @@ export default function WelcomePage() {
       <section className="border-t hairline">
         <div className="max-w-6xl mx-auto px-4 sm:px-8 py-24 sm:py-32 flex flex-col items-center text-center">
           <h2 className="serif text-3xl sm:text-4xl text-ink leading-tight">
-            Your partners are waiting.
+            Raise capital the right way.
           </h2>
           <p className="text-base sm:text-lg text-ink-muted mt-4 max-w-md">
-            Create your vault in minutes. The first key is yours.
+            Create your syndicate in minutes. Establish trust from day one.
           </p>
           <Link
             href="/sign-up"
@@ -160,7 +156,7 @@ export default function WelcomePage() {
             Create a Vault
           </Link>
           <p className="engraved text-ink-faint mt-8 text-xs">
-            Free to use · Built on Nomba · Made in Nigeria
+            Free to use · Built on Monnify · Made in Nigeria
           </p>
         </div>
       </section>
