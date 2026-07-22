@@ -168,9 +168,11 @@ export function useVaultRealtime(vaultId: string | null) {
         (payload) => {
           if (payload.new.vault_id !== vaultId) return;
 
-          qc.invalidateQueries({
-            queryKey: queryKeys.vaults.detail(vaultId),
-          });
+          setTimeout(() => {
+            qc.invalidateQueries({
+              queryKey: queryKeys.vaults.detail(vaultId),
+            });
+          }, 1500);
         }
       )
 
@@ -182,9 +184,11 @@ export function useVaultRealtime(vaultId: string | null) {
           table: "transaction_approvals",
         },
         () => {
-          qc.invalidateQueries({
-            queryKey: queryKeys.vaults.detail(vaultId),
-          });
+          setTimeout(() => {
+            qc.invalidateQueries({
+              queryKey: queryKeys.vaults.detail(vaultId),
+            });
+          }, 1500);
         }
       )
 
