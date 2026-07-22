@@ -8,7 +8,7 @@ import {
   parseDisbursementEventData,
   type MonnifyWebhookEvent,
 } from "@/lib/monnify/webhook-types";
-import { incrementVaultBalanceKobo } from "@/lib/supabase/vault-balance";
+import { incrementVaultBalanceKobo, incrementVaultCapitalKobo } from "@/lib/supabase/vault-balance";
 import { getServiceClient } from "@/lib/supabase/service";
 import { makeId } from "@/lib/vault-utils";
 
@@ -141,7 +141,10 @@ async function handleVaultFunded(
 
   const amountKobo = Math.round(data.amountPaid * 100);
 
-  const balanceResult = await incrementVaultBalanceKobo(vault.id, amountKobo);
+  const balanceResult = inflow_account_type === "capital"
+    ? await incrementVaultCapitalKobo(vault.id, amountKobo)
+    : await incrementVaultBalanceKobo(vault.id, amountKobo);
+
   if (!balanceResult.ok) {
     log({
       level: "error",
