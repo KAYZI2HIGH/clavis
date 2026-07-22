@@ -92,11 +92,11 @@ async function handleVaultFunded(
     return;
   }
 
-  const { data: vault, error: vaultError } = await getServiceClient()
+  // Look up vault by either revenue or capital account number
+  const { data: vaults, error: vaultError } = await getServiceClient()
     .from("vaults")
-    .select("id, quorum")
-    .eq("nomba_virtual_account_number", accountNumber) // using the same DB column mapping
-    .maybeSingle();
+    .select("id, quorum, revenue_account_number, capital_account_number")
+    .or(`revenue_account_number.eq.${accountNumber},capital_account_number.eq.${accountNumber}`);
 
   if (vaultError) {
     log({
@@ -109,6 +109,8 @@ async function handleVaultFunded(
     return;
   }
 
+  const vault = vaults?.[0];
+
   if (!vault) {
     log({
       level: "warn",
@@ -119,10 +121,12 @@ async function handleVaultFunded(
     return;
   }
 
+  const inflow_account_type = vault.revenue_account_number === accountNumber ? "revenue" : "capital";
+
   const { data: existingTx } = await getServiceClient()
     .from("transactions")
     .select("id")
-    .eq("nomba_tx_ref", data.transactionReference)
+    .eq("monnify_tx_ref", data.transactionReference)
     .maybeSingle();
 
   if (existingTx) {
@@ -163,7 +167,9 @@ async function handleVaultFunded(
     status: "settled",
     required_quorum: vault.quorum,
     settled_at: now,
-    nomba_tx_ref: data.transactionReference, // Storing Monnify reference here
+    is_inflow: true,
+    inflow_account_type,
+    monnify_tx_ref: data.transactionReference,
   });
 
   if (txError) {
@@ -213,7 +219,7 @@ async function handleDisbursementSuccess(
   const { data: tx, error: txError } = await getServiceClient()
     .from("transactions")
     .select("id, status")
-    .eq("nomba_tx_ref", data.reference)
+    .eq("monnify_tx_ref", data.reference)
     .maybeSingle();
 
   if (txError) {
@@ -283,7 +289,7 @@ async function handleDisbursementFailed(
   const { data: tx, error: txError } = await getServiceClient()
     .from("transactions")
     .select("id, vault_id, status")
-    .eq("nomba_tx_ref", data.reference)
+    .eq("monnify_tx_ref", data.reference)
     .maybeSingle();
 
   if (txError) {

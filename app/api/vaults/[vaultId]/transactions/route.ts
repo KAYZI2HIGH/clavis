@@ -127,7 +127,7 @@ export async function POST(
     required_quorum: finalQuorum,
     standing_order_id: matchedOrder?.id ?? null,
     requested_at: new Date().toISOString(),
-    nomba_tx_ref: makeId("ref"),
+    monnify_tx_ref: makeId("ref"),
   };
 
   const { data: transaction, error } = await getServiceClient()

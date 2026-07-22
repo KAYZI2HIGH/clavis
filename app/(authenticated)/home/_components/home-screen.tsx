@@ -127,10 +127,11 @@ export function HomeScreen() {
   // Sort vaults dynamically so recently added or updated are at the top (reversed)
   const activeVaults = (vaults ?? [])
     .filter((v) => v.status !== "draft")
-    .sort((a, b) => new Date(b.updatedAt || b.updated_at || 0).getTime() - new Date(a.updatedAt || a.updated_at || 0).getTime());
+    .sort((a, b) => new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime());
+
   const draftVaults = (vaults ?? [])
     .filter((v) => v.status === "draft")
-    .sort((a, b) => new Date(b.updatedAt || b.updated_at || 0).getTime() - new Date(a.updatedAt || a.updated_at || 0).getTime());
+    .sort((a, b) => new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime());
 
   const handleResumeDraft = (v: { id: string }) => {
     router.push(`/vault/create/${v.id}/invite`);
