@@ -15,26 +15,26 @@ export type MonnifyWebhookEvent = z.infer<typeof MonnifyWebhookEventSchema>;
 export const MonnifyTransactionEventDataSchema = z.object({
   transactionReference: z.string(),
   paymentReference: z.string(),
-  amountPaid: z.number(), // NOTE: In Naira
-  totalPayable: z.number(),
-  settlementAmount: z.number(),
-  paidOn: z.string(),
-  paymentStatus: z.string(),
-  paymentDescription: z.string().optional(),
+  amountPaid: z.coerce.number(), // NOTE: In Naira
+  totalPayable: z.coerce.number(),
+  settlementAmount: z.coerce.number().optional().nullable(),
+  paidOn: z.string().optional().nullable(),
+  paymentStatus: z.string().optional().nullable(),
+  paymentDescription: z.string().optional().nullable(),
   product: z.object({
     reference: z.string(),
     type: z.string(),
-  }).optional(),
+  }).optional().nullable(),
   customer: z.object({
     name: z.string(),
     email: z.string(),
-  }).optional(),
+  }).optional().nullable(),
   destinationAccountInformation: z.object({
-    bankCode: z.string(),
-    bankName: z.string(),
+    bankCode: z.string().optional().nullable(),
+    bankName: z.string().optional().nullable(),
     accountNumber: z.string(),
-  }).optional(),
-});
+  }).optional().nullable(),
+}).passthrough();
 
 export type MonnifyTransactionEventData = z.infer<
   typeof MonnifyTransactionEventDataSchema
@@ -65,6 +65,7 @@ export function parseMonnifyWebhookPayload(payload: unknown): MonnifyWebhookEven
 export function parseTransactionEventData(data: unknown): MonnifyTransactionEventData | null {
   const result = MonnifyTransactionEventDataSchema.safeParse(data);
   if (!result.success) {
+    console.warn("Zod validation failed for TransactionEventData:", result.error.toString());
     return null;
   }
   return result.data;
