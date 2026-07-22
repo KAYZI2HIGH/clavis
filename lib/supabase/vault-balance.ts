@@ -4,11 +4,11 @@ export async function incrementVaultBalanceKobo(
   vaultId: string,
   deltaKobo: number,
 ): Promise<{ ok: true; newBalance: number } | { ok: false; error: string }> {
-  const { data, error } = await getServiceClient().rpc(
+  const { error } = await getServiceClient().rpc(
     "increment_vault_balance",
     {
-      p_vault_id: vaultId,
-      p_delta_kobo: deltaKobo,
+      vault_id: vaultId,
+      amount_kobo: deltaKobo,
     },
   );
 
@@ -16,18 +16,18 @@ export async function incrementVaultBalanceKobo(
     return { ok: false, error: error.message };
   }
 
-  return { ok: true, newBalance: data as number };
+  return { ok: true, newBalance: 0 };
 }
 
 export async function deductVaultBalanceKobo(
   vaultId: string,
   amountKobo: number,
 ): Promise<{ ok: true; newBalance: number } | { ok: false; error: string }> {
-  const { data, error } = await getServiceClient().rpc(
+  const { error } = await getServiceClient().rpc(
     "deduct_vault_balance",
     {
-      p_vault_id: vaultId,
-      p_amount_kobo: amountKobo,
+      vault_id: vaultId,
+      amount_kobo: amountKobo,
     },
   );
 
@@ -35,5 +35,5 @@ export async function deductVaultBalanceKobo(
     return { ok: false, error: error.message };
   }
 
-  return { ok: true, newBalance: data as number };
+  return { ok: true, newBalance: 0 };
 }
