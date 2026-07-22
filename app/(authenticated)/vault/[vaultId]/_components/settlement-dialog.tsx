@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
@@ -11,6 +11,11 @@ import {
 } from "@/components/ui/dialog";
 import { formatNGN } from "@/lib/format";
 import type { Vault } from "@/lib/types";
+import { useRecipientLookupQuery } from "@/hooks/use-recipient-lookup-query";
+import { NIGERIAN_BANKS } from "@/lib/nigerian-banks";
+import { Loader2 } from "lucide-react";
+import { Field } from "@/components/shared/field";
+import { InputStyles } from "@/components/shared/input-styles";
 
 interface SettlementDialogProps {
   vault: Vault;
@@ -28,6 +33,20 @@ export function SettlementDialog({
   const qc = useQueryClient();
   const [accountNumber, setAccountNumber] = useState("");
   const [bankCode, setBankCode] = useState("");
+
+  const { data: lookupData, isLoading: lookupLoading } = useRecipientLookupQuery(
+    accountNumber || "",
+    bankCode || "",
+  );
+
+  const resolvedAccountName = lookupData?.accountName;
+
+  useEffect(() => {
+    if (!open) {
+      setAccountNumber("");
+      setBankCode("");
+    }
+  }, [open]);
 
   const { data: settlementPreview, isLoading } = useQuery({
     queryKey: ["vault", vaultId, "settlement-preview"],
@@ -62,6 +81,8 @@ export function SettlementDialog({
       alert(err.message);
     },
   });
+
+  const valid = resolvedAccountName && accountNumber.length === 10 && bankCode;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -115,47 +136,69 @@ export function SettlementDialog({
                 </div>
               </div>
 
-              <div className="space-y-3 mb-6">
-                <div>
-                  <label className="text-xs text-ink-muted block mb-1">
-                    Destination Account
-                  </label>
-                  <input
-                    placeholder="0123456789"
-                    className="input-mech w-full mono"
-                    value={accountNumber}
-                    onChange={(e) => setAccountNumber(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-ink-muted block mb-1">
-                    Bank Code
-                  </label>
-                  <input
-                    placeholder="e.g. 058"
-                    className="input-mech w-full mono"
+              <div className="space-y-4 mb-6">
+                <Field label="Bank">
+                  <select
+                    className="input-mech"
                     value={bankCode}
                     onChange={(e) => setBankCode(e.target.value)}
+                  >
+                    <option value="">Select a bank</option>
+                    {NIGERIAN_BANKS.map((bank) => (
+                      <option key={bank.code} value={bank.code}>
+                        {bank.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+
+                <Field label="Account number">
+                  <input
+                    className="input-mech mono"
+                    inputMode="numeric"
+                    placeholder="0123456789"
+                    value={accountNumber}
+                    onChange={(e) => {
+                      const clean = e.target.value.replace(/\D/g, "").slice(0, 10);
+                      setAccountNumber(clean);
+                    }}
                   />
-                </div>
+                  {lookupLoading && (
+                    <div className="flex items-center gap-1.5 text-ink-muted mt-1.5">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      <span className="text-xs">Verifying account...</span>
+                    </div>
+                  )}
+                  {resolvedAccountName && !lookupLoading && (
+                    <p className="text-xs text-ink-muted mt-1.5">
+                      Recipient:{" "}
+                      <span className="text-ink font-medium">
+                        {resolvedAccountName}
+                      </span>
+                    </p>
+                  )}
+                </Field>
               </div>
 
               <button
-                className="btn-mech btn-mech-primary w-full"
+                className="btn-mech btn-mech-primary w-full disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center"
                 onClick={() => runSettlementMutation.mutate()}
                 disabled={
-                  runSettlementMutation.isPending || !accountNumber || !bankCode
+                  runSettlementMutation.isPending || !valid
                 }
               >
-                {runSettlementMutation.isPending
-                  ? "Processing..."
-                  : "Execute Payout"}
+                {runSettlementMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Execute Payout"
+                )}
               </button>
             </div>
           ) : (
             <p className="text-sm text-crimson">Failed to load preview.</p>
           )}
         </div>
+        <InputStyles />
       </DialogContent>
     </Dialog>
   );

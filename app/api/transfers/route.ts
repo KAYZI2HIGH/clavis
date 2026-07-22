@@ -26,7 +26,7 @@ type TransactionRow = {
   memo: string;
   narration: string | null;
   status: string;
-  nomba_tx_ref: string;
+  monnify_tx_ref: string;
 };
 
 export async function POST(request: Request) {
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
   const { data: tx, error: txError } = await getServiceClient()
     .from("transactions")
     .select(
-      "id, vault_id, recipient_name, recipient_account, recipient_bank_code, amount_kobo, memo, narration, status, nomba_tx_ref",
+      "id, vault_id, recipient_name, recipient_account, recipient_bank_code, amount_kobo, memo, narration, status, monnify_tx_ref",
     )
     .eq("id", transactionId)
     .eq("vault_id", reqVaultId)
@@ -116,7 +116,7 @@ export async function POST(request: Request) {
     log({
       level: "warn",
       event: "transfer_insufficient_balance",
-      merchantTxRef: transaction.nomba_tx_ref,
+      merchantTxRef: transaction.monnify_tx_ref,
       vaultId: transaction.vault_id,
       amount: amountKobo,
       error: deductResult.error,
@@ -130,7 +130,7 @@ export async function POST(request: Request) {
   log({
     level: "info",
     event: "transfer_balance_deducted",
-    merchantTxRef: transaction.nomba_tx_ref,
+    merchantTxRef: transaction.monnify_tx_ref,
     vaultId: transaction.vault_id,
     amount: amountKobo,
     newBalance: deductResult.newBalance,
@@ -151,7 +151,7 @@ export async function POST(request: Request) {
     log({
       level: "info",
       event: "transfer_lookup_recipient_success",
-      merchantTxRef: transaction.nomba_tx_ref,
+      merchantTxRef: transaction.monnify_tx_ref,
       vaultId: transaction.vault_id,
       accountName: lookup.accountName,
     });
@@ -163,7 +163,7 @@ export async function POST(request: Request) {
       accountName: lookup.accountName,
       senderName: vault.name,
       narration,
-      merchantTxRef: transaction.nomba_tx_ref,
+      merchantTxRef: transaction.monnify_tx_ref,
       vaultId: transaction.vault_id,
     });
   } catch (err) {
@@ -184,7 +184,7 @@ export async function POST(request: Request) {
     log({
       level: "error",
       event: "transfer_initiation_failed",
-      merchantTxRef: transaction.nomba_tx_ref,
+      merchantTxRef: transaction.monnify_tx_ref,
       vaultId: transaction.vault_id,
       error: message,
     });
