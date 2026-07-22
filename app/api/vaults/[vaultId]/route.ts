@@ -42,22 +42,30 @@ export async function PATCH(
   const email = session.user.email;
   const phone = session.user.phone;
 
-  // Confirm user is founder
-  const { data: founder } = await getServiceClient()
+  // Confirm user is a member
+  const memberQuery = getServiceClient()
     .from("stakeholders")
-    .select("id")
-    .eq("vault_id", vaultId)
-    .eq("is_founder", true)
-    .or(
-      [email ? `email.eq.${email}` : null, phone ? `phone.eq.${phone}` : null]
-        .filter(Boolean)
-        .join(",")
-    )
-    .maybeSingle();
+    .select("id, is_founder, role")
+    .eq("vault_id", vaultId);
 
-  if (!founder) {
+  const { data: member } = await (
+    email && phone
+      ? memberQuery.or(`email.eq.${email},phone.eq.${phone}`)
+      : email
+      ? memberQuery.eq("email", email)
+      : memberQuery.eq("phone", phone!)
+  ).maybeSingle();
+
+  if (!member) {
     return Response.json(
-      { error: "Only the founder can update quorum" },
+      { error: "Not a vault member" },
+      { status: 403 }
+    );
+  }
+
+  if (!member.is_founder && member.role !== "investor") {
+    return Response.json(
+      { error: "Only the investor or founder can update quorum" },
       { status: 403 }
     );
   }
@@ -76,7 +84,7 @@ export async function PATCH(
   }
 
   // Otherwise fallback to original PATCH active transition behaviour (for backwards compatibility if any)
-  const founderStakeholderId = founder.id;
+  const founderStakeholderId = member.id;
 
   // Write any pending email invites (method=email path)
   const emailStakeholders = body.emailStakeholders ?? [];
@@ -396,6 +404,8 @@ export async function GET(
       founderId: vault.founder_id,
       investorId: vault.investor_id,
       balance_kobo: Number(vault.balance_kobo),
+      total_invested_kobo: Number(vault.total_invested_kobo ?? 0),
+      total_settled_kobo: Number(vault.total_settled_kobo ?? 0),
       revenue_account_number: vault.revenue_account_number,
       revenue_account_bank: vault.revenue_account_bank,
       capital_account_number: vault.capital_account_number,
