@@ -5,7 +5,7 @@ export async function incrementVaultBalanceKobo(
   deltaKobo: number,
 ): Promise<{ ok: true; newBalance: number } | { ok: false; error: string }> {
   const { data, error } = await getServiceClient().rpc(
-    "increment_vault_balance_kobo",
+    "increment_vault_balance",
     {
       p_vault_id: vaultId,
       p_delta_kobo: deltaKobo,
@@ -24,7 +24,7 @@ export async function deductVaultBalanceKobo(
   amountKobo: number,
 ): Promise<{ ok: true; newBalance: number } | { ok: false; error: string }> {
   const { data, error } = await getServiceClient().rpc(
-    "deduct_vault_balance_kobo",
+    "deduct_vault_balance",
     {
       p_vault_id: vaultId,
       p_amount_kobo: amountKobo,
