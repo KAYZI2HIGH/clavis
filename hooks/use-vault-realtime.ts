@@ -31,15 +31,18 @@ export function useVaultRealtime(vaultId: string | null) {
           if (payload.new.id !== vaultId) return;
 
           const newBalance = payload.new.balance_kobo as number;
-          const oldBalance = payload.old.balance_kobo as number;
+          const currentVault = qc.getQueryData<import("@/lib/types").Vault>(queryKeys.vaults.detail(vaultId));
+          const oldBalance = currentVault?.balance_kobo ?? 0;
 
-          // Invalidate vault query so dashboard refetches
-          qc.invalidateQueries({
-            queryKey: queryKeys.vaults.detail(vaultId),
-          });
-          qc.invalidateQueries({
-            queryKey: queryKeys.vaults.all,
-          });
+          // Invalidate vault query so dashboard refetches after a short delay
+          setTimeout(() => {
+            qc.invalidateQueries({
+              queryKey: queryKeys.vaults.detail(vaultId),
+            });
+            qc.invalidateQueries({
+              queryKey: queryKeys.vaults.all,
+            });
+          }, 500);
 
           // Only show toast if balance increased 
           // (incoming fund, not a deduction)
@@ -67,16 +70,18 @@ export function useVaultRealtime(vaultId: string | null) {
         (payload) => {
           if (payload.new.vault_id !== vaultId) return;
 
-          // Invalidate transactions query
-          qc.invalidateQueries({
-            queryKey: queryKeys.vaults.detail(vaultId),
-          });
-          qc.invalidateQueries({
-            queryKey: queryKeys.vaults.all,
-          });
-          qc.invalidateQueries({
-            queryKey: queryKeys.vaults.transactions(vaultId),
-          });
+          // Add delay for read replica catchup
+          setTimeout(() => {
+            qc.invalidateQueries({
+              queryKey: queryKeys.vaults.detail(vaultId),
+            });
+            qc.invalidateQueries({
+              queryKey: queryKeys.vaults.all,
+            });
+            qc.invalidateQueries({
+              queryKey: queryKeys.vaults.transactions(vaultId),
+            });
+          }, 500);
 
           const status = payload.new.status as string;
           const narration = payload.new.narration as string;

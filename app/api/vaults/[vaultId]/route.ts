@@ -341,26 +341,30 @@ export async function GET(
         decline_reason: string | null;
         narration: string | null;
         nomba_tx_ref: string | null;
+        monnify_tx_ref: string | null;
+        is_inflow: boolean | null;
+        inflow_account_type: "revenue" | "capital" | null;
         transaction_approvals: { id: string; stakeholder_id: string; approved_at: string }[];
       }) => ({
         id: t.id,
-        vaultId: t.vault_id,
-        recipientName: t.recipient_name,
-        recipientAccount: t.recipient_account,
-        recipientBankCode: t.recipient_bank_code,
-        recipientBankName: t.recipient_bank_name,
-        amountKobo: Number(t.amount_kobo),
+        vault_id: t.vault_id,
+        recipient_name: t.recipient_name,
+        recipient_account: t.recipient_account,
+        recipient_bank_code: t.recipient_bank_code,
+        amount_kobo: Number(t.amount_kobo),
         memo: t.memo ?? "",
         status: t.status,
-        requestedBy: t.requested_by,
-        requestedAt: new Date(t.requested_at).getTime(),
-        requiredQuorum: t.required_quorum,
-        sealedAt: t.sealed_at ? new Date(t.sealed_at).getTime() : undefined,
-        settledAt: t.settled_at ? new Date(t.settled_at).getTime() : undefined,
-        declinedBy: t.declined_by ?? undefined,
-        declineReason: t.decline_reason ?? undefined,
+        requested_by: t.requested_by,
+        requested_at: t.requested_at,
+        required_quorum: t.required_quorum,
+        settled_at: t.settled_at ?? undefined,
+        declined_by: t.declined_by ?? undefined,
+        decline_reason: t.decline_reason ?? undefined,
         narration: t.narration ?? undefined,
-        nombaTxRef: t.nomba_tx_ref ?? undefined,
+        nomba_tx_ref: t.nomba_tx_ref ?? undefined,
+        monnify_tx_ref: t.monnify_tx_ref ?? undefined,
+        is_inflow: t.is_inflow ?? false,
+        inflow_account_type: t.inflow_account_type ?? undefined,
         approvals: (t.transaction_approvals ?? []).map((ta: { stakeholder_id: string }) => ta.stakeholder_id),
       })),
       linkInvitations: (linkInvitations ?? []).map((li) => ({
