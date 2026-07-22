@@ -97,19 +97,17 @@ export async function POST(
 
   let initialStatus = "pending";
   let finalQuorum = vault.quorum;
+  let autoApproveUserId: string | null = null;
 
   if (matchedOrder) {
     if (matchedOrder.action === "auto_execute") {
-      initialStatus = "approved";
-      finalQuorum = 1; // Overridden to 1 for immediate execution
+      // The investor rule automatically approves this, granting 1 signature.
+      autoApproveUserId = matchedOrder.proposed_by;
     } else if (matchedOrder.action === "always_require_investor") {
-      // Increment quorum by 1 to represent investor's mandatory vote
-      finalQuorum = vault.quorum + 1;
+      // Investor must be one of the signers, but quorum count doesn't necessarily change 
+      // (unless we want to enforce it strictly, but for now we keep the total count the same)
+      finalQuorum = vault.quorum;
     }
-    // "operator_quorum_only" and "notify_then_execute" remain pending with standard quorum
-  } else {
-    // If no match: Route to full quorum
-    finalQuorum = vault.quorum + 1; // Assuming +1 means requiring investor as well
   }
 
   // Insert transaction
@@ -144,17 +142,48 @@ export async function POST(
     );
   }
 
+  if (autoApproveUserId) {
+    await getServiceClient().from("transaction_approvals").insert({
+      id: makeId("apv"),
+      transaction_id: transaction.id,
+      stakeholder_id: autoApproveUserId,
+    });
+
+    if (finalQuorum <= 1) {
+      await getServiceClient().from("transactions").update({
+        status: "approved",
+        sealed_at: new Date().toISOString(),
+      }).eq("id", transaction.id);
+      
+      transaction.status = "approved";
+    }
+  }
+
   // Handle post-insert actions safely in background
   after(async () => {
     if (matchedOrder) {
       if (matchedOrder.action === "auto_execute") {
         log({ level: "info", event: "notification", message: `Payment auto-executed — Standing Order matched: ${matchedOrder.plain_language}` });
         
-        // Trigger Monnify transfer immediately
-        // Note: For real implementation, call initiateTransfer API logic here
-        // e.g. await fetch(`${process.env.NEXTAUTH_URL}/api/transfers`, ...)
-        log({ level: "info", event: "monnify_auto_execute_transfer_triggered", transactionId: txPayload.id });
-        
+        if (finalQuorum <= 1) {
+          await getServiceClient().from("transactions").update({
+            status: "executing",
+          }).eq("id", transaction.id);
+
+          log({ level: "info", event: "monnify_auto_execute_transfer_triggered", transactionId: transaction.id });
+          
+          await fetch(
+            `${process.env.NEXTAUTH_URL}/api/transfers`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                transactionId: transaction.id,
+                vaultId,
+              }),
+            }
+          );
+        }
       } else if (matchedOrder.action === "notify_then_execute") {
         const windowHours = matchedOrder.notify_window_hours || 24;
         log({ level: "info", event: "notification", message: `Payment pending veto — Standing Order matched: ${matchedOrder.plain_language}` });

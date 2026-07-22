@@ -34,7 +34,23 @@ export function useVaultRealtime(vaultId: string | null) {
           const currentVault = qc.getQueryData<import("@/lib/types").Vault>(queryKeys.vaults.detail(vaultId));
           const oldBalance = currentVault?.balance_kobo ?? 0;
 
-          // Invalidate vault query so dashboard refetches after a short delay
+          // Eagerly update the cache with the new database row
+          qc.setQueryData<import("@/lib/types").Vault>(
+            queryKeys.vaults.detail(vaultId),
+            (old) => {
+              if (!old) return old;
+              return {
+                ...old,
+                balance_kobo: newBalance,
+                total_invested_kobo: payload.new.total_invested_kobo ?? old.total_invested_kobo,
+                total_settled_kobo: payload.new.total_settled_kobo ?? old.total_settled_kobo,
+                quorum: payload.new.quorum ?? old.quorum,
+                status: payload.new.status ?? old.status,
+              };
+            }
+          );
+
+          // Still invalidate just in case there are nested relation updates
           setTimeout(() => {
             qc.invalidateQueries({
               queryKey: queryKeys.vaults.detail(vaultId),
@@ -42,7 +58,7 @@ export function useVaultRealtime(vaultId: string | null) {
             qc.invalidateQueries({
               queryKey: queryKeys.vaults.all,
             });
-          }, 500);
+          }, 1500);
 
           // Only show toast if balance increased 
           // (incoming fund, not a deduction)
@@ -81,7 +97,7 @@ export function useVaultRealtime(vaultId: string | null) {
             qc.invalidateQueries({
               queryKey: queryKeys.vaults.transactions(vaultId),
             });
-          }, 500);
+          }, 1500);
 
           const status = payload.new.status as string;
           const narration = payload.new.narration as string;
@@ -113,15 +129,17 @@ export function useVaultRealtime(vaultId: string | null) {
           // Only react to meaningful status transitions
           if (newStatus === oldStatus) return;
 
-          qc.invalidateQueries({
-            queryKey: queryKeys.vaults.detail(vaultId),
-          });
-          qc.invalidateQueries({
-            queryKey: queryKeys.vaults.all,
-          });
-          qc.invalidateQueries({
-            queryKey: queryKeys.vaults.transactions(vaultId),
-          });
+          setTimeout(() => {
+            qc.invalidateQueries({
+              queryKey: queryKeys.vaults.detail(vaultId),
+            });
+            qc.invalidateQueries({
+              queryKey: queryKeys.vaults.all,
+            });
+            qc.invalidateQueries({
+              queryKey: queryKeys.vaults.transactions(vaultId),
+            });
+          }, 1500);
 
           if (newStatus === "settled" && oldStatus === "executing") {
             toast.success("Payout settled.", {
