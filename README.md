@@ -23,11 +23,24 @@
 
 ## What is Clavis?
 
-Nigerian business partners who pool funds together have no digital tool that enforces collective financial control. The default is a single bank account owned by one partner, with everyone else relying on WhatsApp messages to track what happens. Misunderstandings breed quickly, and the system offers zero recourse.
+Clavis is a shared investment vault that gives Nigerian investors real-time visibility and programmable financial control over the businesses they fund, built on Monnify's payment infrastructure.
 
-Clavis solves this with a **shared vault** where no single partner can move money alone. Funds pool into a dedicated Nomba Virtual Account (real NUBAN). When a payout is requested, it stays locked until a **configurable quorum** of partners turn their keys to approve it. Only then does Nomba execute the transfer. Every approval and decline is immutably logged.
+### The Problem
+When Nigerians invest in a friend's or partner's business, they send money and hope. There is no visibility into how funds are spent, no guarantee that revenue is being declared honestly, no mechanism to enforce returns, and no protection if the founders decide to stop paying. The investor has a WhatsApp group and nothing else. This is not a fringe problem — informal business investment is one of the primary ways capital moves in the Nigerian economy, and it happens almost entirely on trust with zero infrastructure.
 
-The name *Clavis* is Latin for *key* — the product's entire interaction model is built around this metaphor: you hold a key, you turn it to approve, the vault stays locked until enough keys have turned.
+### The Solution
+Clavis gives every investment deal its own dedicated vault powered by two Monnify Reserved Accounts — one for investor capital, one for business revenue. Because customer payments land in a designated revenue account rather than a founder's personal account, the system automatically separates revenue from capital at the point of entry with no manual tagging required.
+
+Investors set their terms upfront — profit share percentage, fixed return, or a hybrid cap — and define Standing Orders that let operators run the business freely within agreed boundaries. Routine payments like payroll execute automatically when they match a Standing Order. Anything outside those boundaries requires the investor's explicit approval before Monnify moves a single naira.
+
+At the end of every month, the investor's share of net revenue is calculated from verified vault data and disbursed automatically to their bank account via Monnify. Founders cannot delay, withhold, or manipulate the settlement — the math is public, the transfers are automatic, and the audit trail is permanent.
+
+### What Makes Clavis Unique
+Every other business finance tool in Nigeria is built for the operator — the person running the business. Clavis is built for the investor — the person whose money is at risk.
+
+The two-account architecture is the core innovation. By routing revenue and capital through separate Monnify Reserved Accounts, Clavis makes revenue integrity automatic rather than trust-based. No other product on Nigerian payment rails does this.
+
+Combined with programmable Standing Orders, automatic monthly settlement, and real-time transaction visibility, Clavis turns an informal handshake investment into a structured, enforceable financial relationship — without requiring lawyers, contracts, or a formal company structure.
 
 ---
 
